@@ -13,14 +13,21 @@ Wait until API is healthy, then open:
 - App: http://localhost:3000  
 - Sign in: http://localhost:3000/sign-in  
 
-## Demo login
+## Admin login (full platform access)
+
+| Field | Value |
+|-------|--------|
+| Email | `admin@hirematch.ai` |
+| Password | `Admin@123` |
+
+Or click **Fill platform admin login** on the sign-in page, then open **Platform Admin** in the sidebar.
+
+## Optional demo user
 
 | Field | Value |
 |-------|--------|
 | Email | `demo@hirematch.ai` |
 | Password | `DemoPass123!` |
-
-Or click **Use demo investor login** on the sign-in page.
 
 ## What to show
 

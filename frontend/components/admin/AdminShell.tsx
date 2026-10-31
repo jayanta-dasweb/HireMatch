@@ -11,11 +11,13 @@ export function AdminShell({
   title,
   userName,
   userEmail,
+  isPlatformAdmin = false,
   children,
 }: {
   title: string;
   userName: string;
   userEmail: string;
+  isPlatformAdmin?: boolean;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -29,7 +31,7 @@ export function AdminShell({
 
   return (
     <div className="min-h-screen bg-surface-muted lg:flex">
-      <Sidebar open={open} onClose={() => setOpen(false)} />
+      <Sidebar open={open} onClose={() => setOpen(false)} isPlatformAdmin={isPlatformAdmin} />
       <div className="min-w-0 flex-1">
         <Topbar
           title={title}

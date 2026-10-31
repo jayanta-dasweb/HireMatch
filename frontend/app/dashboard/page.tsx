@@ -16,7 +16,12 @@ export default function DashboardPage() {
   const roles = Array.from(new Set(user.memberships.map((m) => m.role))).join(", ");
 
   return (
-    <AdminShell title="Overview" userName={user.full_name} userEmail={user.email}>
+    <AdminShell
+      title="Overview"
+      userName={user.full_name}
+      userEmail={user.email}
+      isPlatformAdmin={user.is_platform_admin}
+    >
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-ink-950 md:text-3xl">
           Welcome back, {user.full_name.split(" ")[0]}

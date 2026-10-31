@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
     web_concurrency: int = Field(default=2, alias="WEB_CONCURRENCY")
     seed_demo_user: bool = Field(default=False, alias="SEED_DEMO_USER")
+    seed_platform_admin: bool = Field(default=True, alias="SEED_PLATFORM_ADMIN")
 
     @field_validator("secret_key")
     @classmethod

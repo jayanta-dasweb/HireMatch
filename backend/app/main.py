@@ -25,10 +25,13 @@ async def lifespan(_: FastAPI):
     logger.info("Starting %s (%s)", settings.app_name, settings.app_env)
     if settings.is_production and settings.email_backend == "console":
         logger.warning("EMAIL_BACKEND=console — emails are not delivered until SMTP is configured")
-    if settings.seed_demo_user:
-        from app.services.seed import seed_demo_user
+    if settings.seed_platform_admin or settings.seed_demo_user:
+        from app.services.seed import run_seeds
 
-        seed_demo_user()
+        run_seeds(
+            seed_admin=settings.seed_platform_admin,
+            seed_demo=settings.seed_demo_user,
+        )
     yield
 
 

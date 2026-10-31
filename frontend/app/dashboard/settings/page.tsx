@@ -53,7 +53,12 @@ export default function SettingsPage() {
   if (loading || !user) return <DashboardSkeleton />;
 
   return (
-    <AdminShell title="Settings" userName={user.full_name} userEmail={user.email}>
+    <AdminShell
+      title="Settings"
+      userName={user.full_name}
+      userEmail={user.email}
+      isPlatformAdmin={user.is_platform_admin}
+    >
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-ink-950">Profile settings</h1>
         <p className="mt-1 text-sm text-ink-500">Update how your name appears across HireMatch.</p>

@@ -10,16 +10,34 @@ import {
   IconUsers,
 } from "@/components/admin/icons";
 
-const links = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof IconHome;
+  soon?: boolean;
+  adminOnly?: boolean;
+};
+
+const links: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: IconHome },
   { href: "/dashboard/resumes", label: "Resumes", icon: IconFile, soon: true },
   { href: "/dashboard/jobs", label: "Jobs", icon: IconBriefcase, soon: true },
   { href: "/dashboard/team", label: "Team", icon: IconUsers },
+  { href: "/dashboard/admin", label: "Platform Admin", icon: IconSettings, adminOnly: true },
   { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
 ];
 
-export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function Sidebar({
+  open,
+  onClose,
+  isPlatformAdmin = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  isPlatformAdmin?: boolean;
+}) {
   const pathname = usePathname();
+  const visible = links.filter((item) => !item.adminOnly || isPlatformAdmin);
 
   return (
     <>
@@ -37,8 +55,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             HM
           </div>
           <div>
-            <p className="font-display text-base font-bold tracking-tight">HireMatch AI</p>
-            <p className="text-xs text-white/50">Admin workspace</p>
+            <p className="font-display text-base font-bold tracking-tight">HireMatch</p>
+            <p className="text-xs text-white/50">
+              {isPlatformAdmin ? "Platform admin" : "Admin workspace"}
+            </p>
           </div>
         </div>
 
@@ -46,7 +66,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">
             Menu
           </p>
-          {links.map((item) => {
+          {visible.map((item) => {
             const active = pathname === item.href;
             const Icon = item.icon;
             return (
@@ -74,7 +94,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
         <div className="border-t border-white/10 p-4">
           <div className="rounded-2xl bg-white/5 p-3 text-xs text-white/60">
-            Phase 1 foundation is live. Resume AI unlocks in Phase 2.
+            {isPlatformAdmin
+              ? "You have platform-wide access to users, orgs, and system health."
+              : "Phase 1 foundation is live. Resume AI unlocks in Phase 2."}
           </div>
         </div>
       </aside>

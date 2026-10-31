@@ -50,6 +50,8 @@ services:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hirematch}:${POSTGRES_PASSWORD:-hirematch}@db:5432/${POSTGRES_DB:-hirematch}
       REDIS_URL: redis://redis:6379/0
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      SEED_PLATFORM_ADMIN: ${SEED_PLATFORM_ADMIN:-true}
+      SEED_DEMO_USER: ${SEED_DEMO_USER:-false}
     ports:
       - "8000:8000"
     volumes:

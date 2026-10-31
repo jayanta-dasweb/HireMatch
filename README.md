@@ -54,11 +54,12 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
 
 Then open http://localhost:3000/sign-in
 
-- Email: `demo@hirematch.ai`
-- Password: `DemoPass123!`
-- Or click **Use demo investor login**
+**Platform admin (full access)**
+- Email: `admin@hirematch.ai`
+- Password: `Admin@123`
 
 See `docs/INVESTOR_DEMO.md`.
+
 
 ## Production deploy (single host)
 

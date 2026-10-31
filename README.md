@@ -40,6 +40,26 @@ make test
 docker compose exec -e DATABASE_URL=postgresql+psycopg2://hirematch:hirematch@db:5432/hirematch_test -e RATE_LIMIT_ENABLED=false api pytest -q
 ```
 
+### Login
+
+Register at http://localhost:3000/register, or use the fast demo mode below.
+
+## Fast investor / pitch demo
+
+Dev mode can feel slow on Windows. For pitches use production web + seeded demo user:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
+```
+
+Then open http://localhost:3000/sign-in
+
+- Email: `demo@hirematch.ai`
+- Password: `DemoPass123!`
+- Or click **Use demo investor login**
+
+See `docs/INVESTOR_DEMO.md`.
+
 ## Production deploy (single host)
 
 ```bash

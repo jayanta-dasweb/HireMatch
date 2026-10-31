@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     smtp_from: str = Field(default="noreply@hirematch.local", alias="SMTP_FROM")
     frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
     web_concurrency: int = Field(default=2, alias="WEB_CONCURRENCY")
+    seed_demo_user: bool = Field(default=False, alias="SEED_DEMO_USER")
 
     @field_validator("secret_key")
     @classmethod

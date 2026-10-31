@@ -1,14 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Panel } from "@/components/admin/StatCard";
-import { apiFetch, fetchMe, UserMe } from "@/lib/api";
+import { ButtonLoader, DashboardSkeleton } from "@/components/Loading";
+import { apiFetch, UserMe } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function SettingsPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<UserMe | null>(null);
+  const { user, loading, setUser } = useCurrentUser();
   const [fullName, setFullName] = useState("");
   const [headline, setHeadline] = useState("");
   const [locale, setLocale] = useState("en-IN");
@@ -17,15 +17,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchMe()
-      .then((me) => {
-        setUser(me);
-        setFullName(me.full_name);
-        setHeadline(me.headline || "");
-        setLocale(me.locale);
-      })
-      .catch(() => router.replace("/sign-in"));
-  }, [router]);
+    if (!user) return;
+    setFullName(user.full_name);
+    setHeadline(user.headline || "");
+    setLocale(user.locale);
+  }, [user]);
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
@@ -54,15 +50,13 @@ export default function SettingsPage() {
     }
   }
 
-  if (!user) {
-    return <div className="flex min-h-screen items-center justify-center text-ink-500">Loading…</div>;
-  }
+  if (loading || !user) return <DashboardSkeleton />;
 
   return (
     <AdminShell title="Settings" userName={user.full_name} userEmail={user.email}>
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-ink-950">Profile settings</h1>
-        <p className="mt-1 text-sm text-ink-500">Update how your name appears across HireMatch AI.</p>
+        <p className="mt-1 text-sm text-ink-500">Update how your name appears across HireMatch.</p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -87,7 +81,8 @@ export default function SettingsPage() {
             </label>
             {message && <p className="text-sm font-medium text-brand-700">{message}</p>}
             {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
-            <button type="submit" className="btn-primary" disabled={saving}>
+            <button type="submit" className="btn-primary inline-flex gap-2" disabled={saving}>
+              {saving && <ButtonLoader />}
               {saving ? "Saving…" : "Save changes"}
             </button>
           </form>
@@ -106,7 +101,7 @@ export default function SettingsPage() {
             <p className="text-xs uppercase tracking-[0.18em] text-brand-100">Current</p>
             <p className="mt-2 font-display text-2xl font-bold">Free trial</p>
             <p className="mt-2 text-sm text-white/70">
-              Billing and entitlements unlock in Phase 6. Quotas are prepared in the database already.
+              Billing and entitlements unlock in Phase 6.
             </p>
           </div>
         </Panel>

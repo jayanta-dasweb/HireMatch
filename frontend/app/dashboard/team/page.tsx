@@ -1,24 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Panel } from "@/components/admin/StatCard";
-import { fetchMe, UserMe } from "@/lib/api";
+import { DashboardSkeleton } from "@/components/Loading";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function TeamPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<UserMe | null>(null);
-
-  useEffect(() => {
-    fetchMe()
-      .then(setUser)
-      .catch(() => router.replace("/sign-in"));
-  }, [router]);
-
-  if (!user) {
-    return <div className="flex min-h-screen items-center justify-center text-ink-500">Loading…</div>;
-  }
+  const { user, loading } = useCurrentUser();
+  if (loading || !user) return <DashboardSkeleton />;
 
   return (
     <AdminShell title="Team" userName={user.full_name} userEmail={user.email}>
@@ -49,9 +38,7 @@ export default function TeamPage() {
                   <td className="px-2 py-3">
                     <span
                       className={`rounded-lg px-2 py-1 text-[11px] font-semibold ${
-                        m.is_personal
-                          ? "bg-brand-50 text-brand-700"
-                          : "bg-sky-50 text-sky-700"
+                        m.is_personal ? "bg-brand-50 text-brand-700" : "bg-sky-50 text-sky-700"
                       }`}
                     >
                       {m.is_personal ? "Personal" : "Organization"}

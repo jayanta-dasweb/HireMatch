@@ -1,10 +1,13 @@
-.PHONY: dev up down logs test prod-up prod-down backup help
+.PHONY: dev up down logs test demo prod-up prod-down backup help
 
 help:
-	@echo "Targets: dev, up, down, logs, test, prod-up, prod-down, backup"
+	@echo "Targets: dev, up, down, logs, test, demo, prod-up, prod-down, backup"
 
 dev up:
 	docker compose up --build
+
+demo:
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
 
 down:
 	docker compose down

@@ -43,10 +43,11 @@ export function Field({
 
 export function PrimaryButton({
   children,
+  className = "",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button className="btn-primary w-full" {...props}>
+    <button className={`btn-primary w-full ${className}`} {...props}>
       {children}
     </button>
   );

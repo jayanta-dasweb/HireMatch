@@ -1,0 +1,21 @@
+# Fast investor / pitch demo overlay.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
+#
+# Why faster: web runs production Next.js build (no slow Windows bind-mount + next dev compile).
+
+services:
+  api:
+    environment:
+      SEED_DEMO_USER: "true"
+
+  web:
+    build:
+      context: ./frontend
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    volumes: []

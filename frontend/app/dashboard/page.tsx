@@ -1,34 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Panel, StatCard } from "@/components/admin/StatCard";
 import { IconBriefcase, IconFile, IconUsers } from "@/components/admin/icons";
-import { fetchMe, UserMe } from "@/lib/api";
+import { DashboardSkeleton } from "@/components/Loading";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<UserMe | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { user, loading } = useCurrentUser();
 
-  useEffect(() => {
-    fetchMe()
-      .then(setUser)
-      .catch(() => {
-        setError("Please sign in again.");
-        router.replace("/sign-in");
-      });
-  }, [router]);
-
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-muted text-ink-600">
-        {error || "Loading workspace…"}
-      </div>
-    );
-  }
+  if (loading || !user) return <DashboardSkeleton />;
 
   const workspaces = user.memberships.length;
   const roles = Array.from(new Set(user.memberships.map((m) => m.role))).join(", ");
@@ -138,7 +120,6 @@ export default function DashboardPage() {
             </Link>
             <div className="rounded-xl border border-dashed border-ink-200 bg-ink-50/60 p-4 text-xs leading-relaxed text-ink-500">
               Resume upload, semantic matching, and recruiter pipelines are queued for the next phases.
-              This console already enforces tenant isolation.
             </div>
           </div>
         </Panel>

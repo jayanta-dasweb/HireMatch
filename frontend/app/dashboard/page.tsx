@@ -117,15 +117,22 @@ export default function DashboardPage() {
 
         <Panel title="Quick actions">
           <div className="space-y-3">
-            <Link href="/dashboard/settings" className="btn-primary w-full">
+            {user.is_platform_admin && (
+              <Link href="/dashboard/admin/rbac" className="btn-primary w-full">
+                Access Control (roles & permissions)
+              </Link>
+            )}
+            <Link href="/dashboard/team" className={user.is_platform_admin ? "btn-ghost w-full" : "btn-primary w-full"}>
+              Team — invite & assign roles
+            </Link>
+            <Link href="/dashboard/settings" className="btn-ghost w-full">
               Profile settings
             </Link>
-            <Link href="/dashboard/team" className="btn-ghost w-full">
-              View team & roles
-            </Link>
-            <div className="rounded-xl border border-dashed border-ink-200 bg-ink-50/60 p-4 text-xs leading-relaxed text-ink-500">
-              Resume upload, semantic matching, and recruiter pipelines are queued for the next phases.
-            </div>
+            {user.is_platform_admin && (
+              <Link href="/dashboard/admin" className="btn-ghost w-full">
+                Platform Admin
+              </Link>
+            )}
           </div>
         </Panel>
       </div>

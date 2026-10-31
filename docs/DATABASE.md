@@ -7,8 +7,11 @@
 | `users` | Account identity, credentials, verification flags |
 | `user_profiles` | Display name, headline, locale |
 | `organizations` | Tenant / workspace |
-| `organization_members` | User↔org membership + role |
-| `organization_invitations` | Pending invites |
+| `organization_members` | User↔org membership + legacy role enum + `role_id` FK |
+| `organization_invitations` | Pending invites (+ `role_id`) |
+| `permissions` | Global permission catalog (Spatie-style) |
+| `roles` | System roles (`organization_id` null) + org-scoped custom roles |
+| `role_permissions` | Role ↔ permission matrix |
 | `refresh_tokens` | Hashed refresh tokens with expiry/revocation |
 | `email_verification_tokens` | One-time verify tokens |
 | `password_reset_tokens` | One-time reset tokens |

@@ -3,15 +3,15 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.models.enums import MemberRole
-
 
 class MembershipOut(BaseModel):
     organization_id: UUID
     organization_name: str
     organization_slug: str
-    role: MemberRole
+    role: str
+    role_id: UUID | None = None
     is_personal: bool
+    permissions: list[str] = []
 
     model_config = {"from_attributes": True}
 

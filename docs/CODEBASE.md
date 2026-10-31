@@ -53,6 +53,9 @@ Platform Admin (`/dashboard/admin` + `/api/v1/admin/*`) is the control plane for
 | Task | Edit |
 |------|------|
 | Platform admin ops | `services/admin.py` + `api/v1/admin.py` + `app/dashboard/admin/page.tsx` |
+| Advanced RBAC | `services/rbac.py` + `api/v1/rbac.py` + `app/dashboard/admin/rbac` + `app/dashboard/team` |
+
+Auth checks use `require_permission(..., code)` — not hardcoded role lists. `users.is_platform_admin` bypasses org permission checks.
 
 ## Don’t
 

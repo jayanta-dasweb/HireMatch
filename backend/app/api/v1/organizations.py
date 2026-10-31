@@ -67,12 +67,16 @@ def invite_member(
         organization_id=org_id,
         email=payload.email,
         role=payload.role,
+        role_id=payload.role_id,
+        role_slug=payload.role_slug,
     )
     settings = get_settings()
+    role_slug = invite.role.value if invite.role else (payload.role_slug or "recruiter")
     return InvitationOut(
         id=invite.id,
         email=invite.email,
-        role=invite.role,
+        role=role_slug,
+        role_id=invite.role_id,
         status=invite.status,
         expires_at=invite.expires_at,
         invite_token=raw if settings.email_backend == "console" and not settings.is_production else None,

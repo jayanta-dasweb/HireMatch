@@ -14,3 +14,4 @@ Product name is HireMatch. Local folder name (e.g. jdasproject) is irrelevant.
 - Never fake AI, payments, or email delivery. Never commit secrets.
 - Prefer Docker Compose so any clone works the same.
 - Master-driven ops: Platform Admin UI for users/orgs/flags — no raw DB for day-to-day work. Secrets/SMTP/Docker/migrations stay ops-side.
+- Advanced RBAC via `services/rbac.py` + Access Control / Team UIs. Prefer `require_permission` over hardcoded role lists.

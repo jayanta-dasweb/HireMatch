@@ -19,10 +19,13 @@ from app.models import (
 from app.services import tokens as token_svc
 from app.services.audit import record_audit
 from app.services.email import send_email
+from app.services.rbac import (
+    legacy_member_role,
+    require_permission,
+    resolve_assignable_role,
+)
 from app.services.slugs import slugify
 from app.services.workspace import create_workspace
-
-MANAGER_ROLES = {MemberRole.org_admin, MemberRole.agency_manager}
 
 
 def get_membership(db: Session, *, user_id: UUID, organization_id: UUID) -> OrganizationMember | None:
@@ -42,10 +45,8 @@ def require_membership(db: Session, *, user_id: UUID, organization_id: UUID) -> 
 
 
 def require_org_manager(db: Session, *, user: User, organization_id: UUID) -> OrganizationMember:
-    membership = require_membership(db, user_id=user.id, organization_id=organization_id)
-    if membership.role not in MANAGER_ROLES:
-        raise forbidden("Insufficient permissions")
-    return membership
+    """Legacy helper — now permission-based."""
+    return require_permission(db, user=user, organization_id=organization_id, code="org.members.invite")
 
 
 def create_organization(db: Session, *, user: User, name: str, slug: str | None) -> Organization:
@@ -85,7 +86,10 @@ def list_members(db: Session, *, organization_id: UUID) -> list[OrganizationMemb
     return list(
         db.scalars(
             select(OrganizationMember)
-            .options(joinedload(OrganizationMember.user).joinedload(User.profile))
+            .options(
+                joinedload(OrganizationMember.user).joinedload(User.profile),
+                joinedload(OrganizationMember.rbac_role),
+            )
             .where(OrganizationMember.organization_id == organization_id)
         )
         .unique()
@@ -94,11 +98,13 @@ def list_members(db: Session, *, organization_id: UUID) -> list[OrganizationMemb
 
 
 def member_to_dict(m: OrganizationMember) -> dict:
+    role_slug = m.rbac_role.slug if m.rbac_role else (m.role.value if m.role else "candidate")
     return {
         "user_id": m.user_id,
         "email": m.user.email,
         "full_name": m.user.profile.full_name if m.user.profile else "",
-        "role": m.role,
+        "role": role_slug,
+        "role_id": m.role_id,
         "created_at": m.created_at,
     }
 
@@ -109,21 +115,27 @@ def create_invitation(
     user: User,
     organization_id: UUID,
     email: str,
-    role: MemberRole,
+    role: MemberRole | None = None,
+    role_id: UUID | None = None,
+    role_slug: str | None = None,
 ) -> tuple[OrganizationInvitation, str]:
-    require_org_manager(db, user=user, organization_id=organization_id)
-    if role == MemberRole.platform_admin:
-        raise bad_request("Cannot invite platform_admin via organization invite")
+    require_permission(db, user=user, organization_id=organization_id, code="org.members.invite")
 
     org = db.get(Organization, organization_id)
     if not org or not org.is_active:
         raise not_found("Organization not found")
 
+    slug = role_slug or (role.value if role else "recruiter")
+    rbac_role = resolve_assignable_role(
+        db, organization_id=organization_id, role_id=role_id, role_slug=slug if not role_id else None
+    )
+
     raw, hashed = token_svc.new_raw_token()
     invite = OrganizationInvitation(
         organization_id=organization_id,
         email=email.lower(),
-        role=role,
+        role=legacy_member_role(rbac_role),
+        role_id=rbac_role.id,
         token_hash=hashed,
         status=InvitationStatus.pending,
         invited_by_user_id=user.id,
@@ -135,14 +147,14 @@ def create_invitation(
     send_email(
         to=email.lower(),
         subject=f"Invitation to join {org.name} on HireMatch AI",
-        body=f"You have been invited to join {org.name} as {role.value}.\n\nAccept: {link}\n",
+        body=f"You have been invited to join {org.name} as {rbac_role.name}.\n\nAccept: {link}\n",
     )
     record_audit(
         db,
         action="organization.invitation_created",
         actor_user_id=user.id,
         organization_id=organization_id,
-        metadata={"email": email.lower(), "role": role.value},
+        metadata={"email": email.lower(), "role_slug": rbac_role.slug},
     )
     db.commit()
     db.refresh(invite)
@@ -170,10 +182,19 @@ def accept_invitation(db: Session, *, user: User, organization_id: UUID, token: 
         db.commit()
         return existing
 
+    role_id = invite.role_id
+    if not role_id:
+        rbac_role = resolve_assignable_role(db, organization_id=organization_id, role_slug=invite.role.value)
+        role_id = rbac_role.id
+        legacy = legacy_member_role(rbac_role)
+    else:
+        legacy = invite.role
+
     membership = OrganizationMember(
         organization_id=organization_id,
         user_id=user.id,
-        role=invite.role,
+        role=legacy,
+        role_id=role_id,
     )
     db.add(membership)
     record_audit(

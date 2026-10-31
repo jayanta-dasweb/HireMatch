@@ -26,6 +26,15 @@ async def lifespan(_: FastAPI):
     logger.info("Starting %s (%s)", settings.app_name, settings.app_env)
     if settings.is_production and settings.email_backend == "console":
         logger.warning("EMAIL_BACKEND=console — emails are not delivered until SMTP is configured")
+    from app.db.session import SessionLocal
+    from app.services.rbac import backfill_membership_roles, ensure_rbac_seeded
+    from app.services.rbac_seed import seed_rbac_defaults
+
+    with SessionLocal() as db:
+        seed_rbac_defaults(db)
+        ensure_rbac_seeded(db)
+        backfill_membership_roles(db)
+
     if settings.seed_platform_admin or settings.seed_demo_user:
         from app.services.seed import run_seeds
 

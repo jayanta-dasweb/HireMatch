@@ -26,22 +26,25 @@ class MemberOut(BaseModel):
     user_id: UUID
     email: EmailStr
     full_name: str
-    role: MemberRole
+    role: str
+    role_id: UUID | None = None
     created_at: datetime
 
 
 class InvitationCreate(BaseModel):
     email: EmailStr
-    role: MemberRole = MemberRole.recruiter
+    role: MemberRole | None = None
+    role_id: UUID | None = None
+    role_slug: str | None = "recruiter"
 
 
 class InvitationOut(BaseModel):
     id: UUID
     email: EmailStr
-    role: MemberRole
+    role: str
+    role_id: UUID | None = None
     status: InvitationStatus
     expires_at: datetime
-    # Dev-only raw token when email console backend is used
     invite_token: str | None = None
 
 

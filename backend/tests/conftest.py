@@ -37,6 +37,8 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture(scope="session", autouse=True)
 def prepare_database():
+    from app.services.rbac_seed import seed_rbac_defaults
+
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     with TestingSessionLocal() as db:
@@ -51,6 +53,7 @@ def prepare_database():
                 )
             )
             db.commit()
+        seed_rbac_defaults(db)
     yield
 
 

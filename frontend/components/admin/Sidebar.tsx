@@ -24,6 +24,7 @@ const links: NavItem[] = [
   { href: "/dashboard/jobs", label: "Jobs", icon: IconBriefcase, soon: true },
   { href: "/dashboard/team", label: "Team", icon: IconUsers },
   { href: "/dashboard/admin", label: "Platform Admin", icon: IconSettings, adminOnly: true },
+  { href: "/dashboard/admin/rbac", label: "Access Control", icon: IconUsers, adminOnly: true },
   { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
 ];
 

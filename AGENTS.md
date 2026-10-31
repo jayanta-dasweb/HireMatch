@@ -11,3 +11,4 @@ Product name is **HireMatch**. The local folder (e.g. `jdasproject`) is only a p
 7. Never commit secrets.
 8. Commit and push every change with a simple developer message (no Cursor credits).
 9. **Master-driven ops:** day-to-day user/org/admin work happens from Platform Admin UI — never require raw SQL/DB for that. Secrets, SMTP, Docker, migrations stay ops-side (not in UI).
+10. **Advanced RBAC:** permissions + roles + matrix are managed from Access Control / Team UIs. Use `services/rbac.py` (`require_permission`) for org gates — do not reintroduce hardcoded role lists.

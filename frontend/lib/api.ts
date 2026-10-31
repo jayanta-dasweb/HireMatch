@@ -12,7 +12,9 @@ export type Membership = {
   organization_name: string;
   organization_slug: string;
   role: string;
+  role_id?: string | null;
   is_personal: boolean;
+  permissions?: string[];
 };
 
 export type UserMe = {

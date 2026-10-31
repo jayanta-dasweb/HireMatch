@@ -26,6 +26,8 @@ def create_workspace(
     slug_seed: str,
 ) -> Organization:
     """Create an organization, add the owner, and attach the free plan if present."""
+    from app.services.rbac import get_system_role, legacy_member_role
+
     org = Organization(
         name=name,
         slug=unique_org_slug(db, slug_seed),
@@ -34,11 +36,13 @@ def create_workspace(
     db.add(org)
     db.flush()
 
+    rbac_role = get_system_role(db, owner_role.value)
     db.add(
         OrganizationMember(
             organization_id=org.id,
             user_id=owner_user_id,
-            role=owner_role,
+            role=legacy_member_role(rbac_role),
+            role_id=rbac_role.id,
         )
     )
     attach_free_plan(db, organization_id=org.id)

@@ -30,6 +30,7 @@ def get_current_user(
         .options(
             joinedload(User.profile),
             joinedload(User.memberships).joinedload(OrganizationMember.organization),
+            joinedload(User.memberships).joinedload(OrganizationMember.rbac_role),
         )
         .where(User.id == user_id)
     )

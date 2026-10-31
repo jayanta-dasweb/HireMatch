@@ -12,6 +12,7 @@ from app.db.base import Base
 from app.models.enums import InvitationStatus, MemberRole, SubscriptionStatus
 
 if TYPE_CHECKING:
+    from app.models.rbac import Role
     from app.models.user import User
 
 
@@ -45,10 +46,14 @@ class OrganizationMember(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
     role: Mapped[MemberRole] = mapped_column(Enum(MemberRole, name="member_role"), nullable=False)
+    role_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("roles.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     organization: Mapped[Organization] = relationship(back_populates="members")
     user: Mapped[User] = relationship(back_populates="memberships")
+    rbac_role: Mapped[Role | None] = relationship("Role")
 
 
 class OrganizationInvitation(Base):
@@ -61,6 +66,9 @@ class OrganizationInvitation(Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
     role: Mapped[MemberRole] = mapped_column(
         Enum(MemberRole, name="member_role", create_type=False), nullable=False
+    )
+    role_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("roles.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     status: Mapped[InvitationStatus] = mapped_column(
@@ -76,6 +84,7 @@ class OrganizationInvitation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     organization: Mapped[Organization] = relationship(back_populates="invitations")
+    rbac_role: Mapped[Role | None] = relationship("Role")
 
 
 class SubscriptionPlan(Base):

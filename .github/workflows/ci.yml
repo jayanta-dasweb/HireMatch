@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hirematch
+          POSTGRES_PASSWORD: hirematch
+          POSTGRES_DB: hirematch_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hirematch -d hirematch_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      SECRET_KEY: test-secret-key-hirematch-ai-phase1-32chars
+      DATABASE_URL: postgresql+psycopg2://hirematch:hirematch@localhost:5432/hirematch_test
+      EMAIL_BACKEND: console
+      APP_ENV: test
+      DEBUG: "true"
+      CORS_ORIGINS: http://localhost:3000
+      FRONTEND_URL: http://localhost:3000
+      TRUSTED_HOSTS: "*"
+      RATE_LIMIT_ENABLED: "false"
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run pytest
+        run: pytest -q
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: npm install
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+        run: npm run build
+
+  docker:
+    name: Production image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API production image
+        run: docker build --target production -t hirematch-api:ci ./backend
+      - name: Build web production image
+        run: |
+          docker build --target production \
+            --build-arg NEXT_PUBLIC_API_URL=http://localhost/api/v1 \
+            -t hirematch-web:ci ./frontend

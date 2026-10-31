@@ -1,3 +1,6 @@
+# Local development stack — hot reload, exposed DB/Redis, Mailhog.
+# Production: use docker compose -f docker-compose.prod.yml up -d --build
+
 services:
   db:
     image: postgres:16-alpine
@@ -35,12 +38,16 @@ services:
   api:
     build:
       context: ./backend
+      target: development
     env_file:
       - .env
     environment:
       PYTHONPATH: /app
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hirematch}:${POSTGRES_PASSWORD:-hirematch}@db:5432/${POSTGRES_DB:-hirematch}
       REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
     ports:
       - "8000:8000"
     volumes:
@@ -59,6 +66,7 @@ services:
   web:
     build:
       context: ./frontend
+      target: development
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
     ports:

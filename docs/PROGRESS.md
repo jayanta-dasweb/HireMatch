@@ -1,65 +1,57 @@
 # HireMatch AI — Project Progress
 
 **Last updated:** 2026-10-31  
-**Active phase:** Phase 1 — Product Foundation  
+**Active phase:** Phase 1 foundation + production ops baseline  
 **Remote:** https://github.com/jayanta-dasweb/HireMatch.git
 
 ## Completed
 
-- [x] Product planning docs (PRD, architecture, DB, API, security, AI eval, deploy, cost, backlog)
-- [x] Repository structure (`backend/`, `frontend/`, `docs/`, Docker Compose)
-- [x] Environment validation via pydantic-settings (`SECRET_KEY` min length, required DB URL)
-- [x] PostgreSQL schema + Alembic migration `0001_phase1`
-- [x] Auth: register, login, logout, refresh rotation, email verify & password reset **token flows**
-- [x] Secure password hashing (bcrypt); tokens stored hashed
-- [x] Organizations, memberships, invitations, RBAC roles
-- [x] Tenant isolation on org routes + automated tests
-- [x] Frontend: landing, pricing, security, register, sign-in, verify-email, protected dashboard
-- [x] Health check + OpenAPI (`/docs`)
-- [x] README with clone-and-run instructions
+### Product Phase 1
+- [x] Planning docs (PRD, architecture, API, DB, security, AI eval, deploy, cost, backlog)
+- [x] Auth, orgs, RBAC, tenant isolation tests
+- [x] Next.js auth pages + dashboard
+- [x] Docker Compose development stack
 
-## Test results (2026-10-31)
+### Production-ready setup
+- [x] Multi-stage Dockerfiles (dev + prod targets), non-root users
+- [x] Gunicorn + Uvicorn workers for API
+- [x] Next.js `standalone` production image
+- [x] `docker-compose.prod.yml` with internal network, Redis auth, nginx proxy
+- [x] Liveness `/health` + readiness `/ready`
+- [x] Security headers, Trusted Host (prod), CORS allowlist hardening
+- [x] Auth rate limiting (SlowAPI)
+- [x] OpenAPI disabled in production
+- [x] Production env validation guards (`DEBUG`, weak `SECRET_KEY`, `TRUSTED_HOSTS`)
+- [x] Backup / restore / deploy scripts
+- [x] GitHub Actions CI (pytest, Next build, Docker image builds)
+- [x] Makefile + deployment documentation
 
-Executed inside Docker:
+## Test results (after production hardening)
 
 ```text
-docker compose exec -e DATABASE_URL=postgresql+psycopg2://hirematch:hirematch@db:5432/hirematch_test api pytest -q
-.......  7 passed in 4.11s
+10 passed in 4.23s
 ```
 
-Health check: `GET /api/v1/health` → `{"status":"ok","service":"hirematch-api"}`
+Production images built successfully: `hirematch-api:prod`, `hirematch-web:prod`.
 
-## Pending (Phase 1 wrap-up / review)
+## Known limitations (honest)
 
-- [ ] Human review / approval before Phase 2
-- [ ] Configure real SMTP before claiming email delivery in any environment
-- [ ] Optional: promote a user to `is_platform_admin` for `/admin/*` smoke tests
+- Not a full commercial product yet (no resume AI / billing)
+- TLS certs must be supplied by the operator
+- SMTP must be configured for real email delivery
+- Single-host Compose is early-production; large scale needs managed DB/Redis + replicas
+- JWT still in browser `localStorage` (harden to HttpOnly cookies before high-risk launch)
+- No Sentry/APM wired yet (integration points documented)
 
-## Known limitations
+## Next product step (after approval)
 
-- Email is **console-backed** by default — tokens are logged / returned in API for local use; not production email delivery
-- No resume parsing, embeddings, matching, payments, or recruitment pipelines yet
-- Subscription plans are seeded; quotas are **not** enforced until Phase 6
-- PostgreSQL RLS policies not yet applied (application-layer isolation + tests in Phase 1)
-- Frontend auth uses `localStorage` for JWTs (acceptable for Phase 1; harden with HttpOnly cookies later)
-
-## Architectural decisions
-
-1. Monorepo with Docker Compose for contributor parity
-2. JWT access + refresh (refresh hashed at rest, rotated on use)
-3. Personal organization auto-created on registration
-4. pgvector deferred to Phase 3 (DB ready for extension)
-5. No fake AI or fake payment success
-
-## Next implementation step (after approval)
-
-**Phase 2 — Resume Intelligence:** private object storage, upload validation, PDF/DOCX parsing, structured extraction review UI, Celery processing jobs, resume versioning.
+**Phase 2 — Resume Intelligence**
 
 ## Manual verification checklist
 
-1. `docker compose up --build` succeeds
-2. `GET /api/v1/health` returns `ok`
-3. Register → login → `/dashboard` shows personal workspace
-4. User B cannot `GET /organizations/{orgA}` (404)
-5. `pytest` passes against `hirematch_test`
-6. No secrets committed (`.env` gitignored)
+1. `docker compose up --build` (dev) — health + register/login
+2. `pytest` green in CI / locally
+3. `docker build --target production ./backend` succeeds
+4. `docker build --target production ./frontend` succeeds
+5. `.env.production` never committed
+6. Backup script dry-run on a non-prod volume when available

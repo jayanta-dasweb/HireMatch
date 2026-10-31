@@ -1,4 +1,6 @@
-# HireMatch AI — Simple codebase map
+# HireMatch — Simple codebase map
+
+**Product:** HireMatch. Local disk folder name does not matter.
 
 Read this first. Keep new code small and reuse helpers.
 

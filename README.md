@@ -1,11 +1,14 @@
-# HireMatch AI
+# HireMatch
 
 AI-powered resume intelligence, semantic job matching, and recruitment SaaS.
 
-**Status:** Phase 1 foundation + **production-ready Docker/ops baseline**  
-**Remote:** https://github.com/jayanta-dasweb/HireMatch.git
+**Product name:** HireMatch (UI may show “HireMatch AI”)  
+**Repo:** https://github.com/jayanta-dasweb/HireMatch.git  
+**Note:** Your local folder can be named anything (e.g. `jdasproject`). Docker Compose project name is always `hirematch`.
 
-> Resume parsing, AI matching, and payments are intentionally deferred. Ops, security defaults, CI, and deploy paths are production-oriented now.
+**Status:** Phase 1 foundation + production-ready Docker/ops baseline
+
+> Resume parsing, AI matching, and payments are intentionally deferred.
 
 ## Stack
 

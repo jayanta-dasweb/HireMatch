@@ -3,7 +3,9 @@ description: HireMatch AI project conventions for Cursor agents
 alwaysApply: true
 ---
 
-# HireMatch AI
+# HireMatch
+
+Product name is HireMatch. Local folder name (e.g. jdasproject) is irrelevant.
 
 - Read `docs/CODEBASE.md` first — keep code simple and DRY.
 - Thin routes; business logic in `services/`; reuse `tokens.py`, `workspace.py`, `errors.py`.

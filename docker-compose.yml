@@ -1,5 +1,7 @@
-# Local development stack — hot reload, exposed DB/Redis, Mailhog.
-# Production: use docker compose -f docker-compose.prod.yml up -d --build
+# HireMatch — local development stack (folder name can be anything).
+# Production: docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+name: hirematch
 
 services:
   db:

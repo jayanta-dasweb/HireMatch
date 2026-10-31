@@ -1,7 +1,9 @@
-# Production-oriented stack. Put secrets in .env.production (never commit).
+# HireMatch — production stack. Put secrets in .env.production (never commit).
 # Example:
 #   cp .env.production.example .env.production
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+name: hirematch
 
 services:
   db:

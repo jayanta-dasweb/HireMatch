@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { AuthCard, Field, PageShell, PrimaryButton } from "@/components/ui";
 import { ButtonLoader, FullPageLoader } from "@/components/Loading";
 import { useAlert } from "@/components/AlertModal";
-import { loginUser } from "@/lib/api";
+import { ensureAccessToken, loginUser, storeTokens } from "@/lib/api";
 import { friendlyErrorMessage, isValidEmailFormat } from "@/lib/errors";
+import { clearActiveOrg } from "@/lib/orgContext";
 import { clearUserCache } from "@/lib/useCurrentUser";
 
 export default function SignInPage() {
@@ -19,6 +20,18 @@ export default function SignInPage() {
   const [fieldError, setFieldError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [booting, setBooting] = useState(false);
+
+  // Drop dead sessions so dashboard remounts stop spamming 401s.
+  useEffect(() => {
+    void (async () => {
+      const ok = await ensureAccessToken();
+      if (!ok) {
+        storeTokens(null);
+        clearUserCache();
+        clearActiveOrg();
+      }
+    })();
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();

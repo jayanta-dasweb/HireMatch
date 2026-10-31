@@ -62,6 +62,20 @@ function errorMessage(data: unknown): string {
   return "Request failed";
 }
 
+/** True when JWT is missing/corrupt or past exp (with small skew). */
+function accessNeedsRefresh(accessToken: string, skewSeconds = 60): boolean {
+  try {
+    const part = accessToken.split(".")[1];
+    if (!part) return true;
+    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(json) as { exp?: number };
+    if (!payload.exp) return true;
+    return payload.exp * 1000 <= Date.now() + skewSeconds * 1000;
+  } catch {
+    return true;
+  }
+}
+
 let refreshInFlight: Promise<boolean> | null = null;
 
 /** Exchange refresh token for a new pair. Returns false if session is dead. */
@@ -69,7 +83,10 @@ export async function refreshSession(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
     const refresh = readTokens()?.refresh_token;
-    if (!refresh) return false;
+    if (!refresh) {
+      storeTokens(null);
+      return false;
+    }
     try {
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: "POST",
@@ -93,6 +110,21 @@ export async function refreshSession(): Promise<boolean> {
   return refreshInFlight;
 }
 
+/**
+ * Make sure we have a usable access token BEFORE calling protected APIs.
+ * Avoids noisy console 401s from expired access tokens.
+ */
+export async function ensureAccessToken(): Promise<boolean> {
+  const tokens = readTokens();
+  if (!tokens?.access_token && !tokens?.refresh_token) return false;
+  if (tokens.access_token && !accessNeedsRefresh(tokens.access_token)) return true;
+  if (!tokens.refresh_token) {
+    storeTokens(null);
+    return false;
+  }
+  return refreshSession();
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -103,6 +135,10 @@ export async function apiFetch<T>(
   headers.set("Content-Type", "application/json");
 
   if (auth) {
+    if (!_retried) {
+      const ready = await ensureAccessToken();
+      if (!ready) throw new Error("Not authenticated");
+    }
     const access = readTokens()?.access_token;
     if (!access) throw new Error("Not authenticated");
     headers.set("Authorization", `Bearer ${access}`);
@@ -220,11 +256,14 @@ export const verifyEmail = (token: string) =>
     body: JSON.stringify({ token }),
   });
 
-/** True when a local access token exists (may still be expired). */
 export function hasAccessToken(): boolean {
   return !!readTokens()?.access_token;
 }
 
 export function hasRefreshToken(): boolean {
   return !!readTokens()?.refresh_token;
+}
+
+export function hasAnySession(): boolean {
+  return hasAccessToken() || hasRefreshToken();
 }

@@ -115,88 +115,16 @@ export const verifyEmail = (token: string) =>
     body: JSON.stringify({ token }),
   });
 
-/* —— Platform Admin (master console) —— */
-
-export type AdminUser = {
-  id: string;
-  email: string;
-  full_name: string;
-  is_active: boolean;
-  is_email_verified: boolean;
-  is_platform_admin: boolean;
-  membership_count: number;
-};
-
-export type AdminOrg = {
-  id: string;
-  name: string;
-  slug: string;
-  is_personal: boolean;
-  is_active: boolean;
-  created_at: string;
-};
-
-export type AdminHealth = {
-  status: string;
-  database: string;
-  organization_count: number;
-  user_count: number;
-  active_user_count: number;
-};
-
-export type AuditLog = {
-  id: string;
-  action: string;
-  actor_user_id: string | null;
-  organization_id: string | null;
-  resource_type: string | null;
-  resource_id: string | null;
-  created_at: string;
-};
-
-export const adminFetchHealth = () => apiFetch<AdminHealth>("/admin/system-health", {}, true);
-export const adminFetchUsers = () => apiFetch<AdminUser[]>("/admin/users", {}, true);
-export const adminFetchOrgs = () => apiFetch<AdminOrg[]>("/admin/organizations", {}, true);
-export const adminFetchAudit = (limit = 100) =>
-  apiFetch<AuditLog[]>(`/admin/audit-logs?limit=${limit}`, {}, true);
-
-export const adminCreateUser = (body: {
-  email: string;
-  full_name: string;
-  password: string;
-  is_platform_admin?: boolean;
-  is_email_verified?: boolean;
-  is_active?: boolean;
-}) =>
-  apiFetch<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(body) }, true);
-
-export const adminUpdateUser = (
-  id: string,
-  body: {
-    full_name?: string;
-    is_active?: boolean;
-    is_email_verified?: boolean;
-    is_platform_admin?: boolean;
-  },
-) => apiFetch<AdminUser>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }, true);
-
-export const adminSetUserActive = (id: string, is_active: boolean) =>
-  apiFetch<AdminUser>(
-    `/admin/users/${id}/active`,
-    { method: "PATCH", body: JSON.stringify({ is_active }) },
-    true,
-  );
-
-export const adminResetPassword = (id: string, new_password: string) =>
-  apiFetch<AdminUser>(
-    `/admin/users/${id}/reset-password`,
-    { method: "POST", body: JSON.stringify({ new_password }) },
-    true,
-  );
-
-export const adminSetOrgActive = (id: string, is_active: boolean) =>
-  apiFetch<AdminOrg>(
-    `/admin/organizations/${id}/active`,
-    { method: "PATCH", body: JSON.stringify({ is_active }) },
-    true,
-  );
+/** Re-export admin helpers so older imports keep working. Prefer `@/lib/adminApi`. */
+export {
+  adminCreateUser,
+  adminFetchAudit,
+  adminFetchHealth,
+  adminFetchOrgs,
+  adminFetchUsers,
+  adminResetPassword,
+  adminSetOrgActive,
+  adminSetUserActive,
+  adminUpdateUser,
+} from "@/lib/adminApi";
+export type { AdminHealth, AdminOrg, AdminUser, AuditLog } from "@/lib/adminApi";

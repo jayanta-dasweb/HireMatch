@@ -22,7 +22,7 @@ import {
   adminSetOrgActive,
   adminSetUserActive,
   adminUpdateUser,
-} from "@/lib/api";
+} from "@/lib/adminApi";
 import { friendlyErrorMessage } from "@/lib/errors";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 

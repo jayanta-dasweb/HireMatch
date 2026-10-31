@@ -7,7 +7,9 @@ from app.core.deps import require_platform_admin
 from app.db.session import get_db
 from app.models import User
 from app.schemas.admin import (
+    AdminMemberRoleAssign,
     AdminPasswordReset,
+    AdminSpecialPermissionsUpdate,
     AdminUserCreate,
     AdminUserDetailOut,
     AdminUserOut,
@@ -18,6 +20,7 @@ from app.schemas.admin import (
 )
 from app.schemas.organization import OrganizationOut
 from app.services import admin as admin_svc
+from app.services import rbac as rbac_svc
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -125,6 +128,45 @@ def admin_reset_password(
     return admin_svc.reset_user_password(
         db, actor_id=admin.id, user_id=user_id, new_password=payload.new_password
     )
+
+
+@router.patch("/users/{user_id}/organizations/{org_id}/role", response_model=AdminUserDetailOut)
+def admin_assign_user_org_role(
+    user_id: UUID,
+    org_id: UUID,
+    payload: AdminMemberRoleAssign,
+    admin: User = Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+):
+    """Platform admin assigns org role to a user (Users master)."""
+    rbac_svc.assign_member_role(
+        db,
+        actor=admin,
+        organization_id=org_id,
+        user_id=user_id,
+        role_id=payload.role_id,
+        role_slug=payload.role_slug,
+    )
+    return admin_svc.get_user_detail(db, user_id)
+
+
+@router.put("/users/{user_id}/organizations/{org_id}/special-permissions", response_model=AdminUserDetailOut)
+def admin_set_special_permissions(
+    user_id: UUID,
+    org_id: UUID,
+    payload: AdminSpecialPermissionsUpdate,
+    admin: User = Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+):
+    """Platform admin sets direct/special permissions for a user in one org."""
+    rbac_svc.sync_user_special_permissions(
+        db,
+        actor_id=admin.id,
+        user_id=user_id,
+        organization_id=org_id,
+        permission_codes=payload.permission_codes,
+    )
+    return admin_svc.get_user_detail(db, user_id)
 
 
 @router.get("/audit-logs", response_model=list[AuditLogOut])

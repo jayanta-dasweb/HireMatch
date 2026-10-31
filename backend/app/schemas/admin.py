@@ -19,12 +19,25 @@ class AdminMembershipOut(BaseModel):
     organization_name: str
     organization_slug: str
     role: str
+    role_id: UUID | None = None
     is_personal: bool
     is_active: bool
+    role_permissions: list[str] = []
+    special_permissions: list[str] = []
+    effective_permissions: list[str] = []
 
 
 class AdminUserDetailOut(AdminUserOut):
     memberships: list[AdminMembershipOut]
+
+
+class AdminMemberRoleAssign(BaseModel):
+    role_id: UUID | None = None
+    role_slug: str | None = None
+
+
+class AdminSpecialPermissionsUpdate(BaseModel):
+    permission_codes: list[str] = Field(default_factory=list)
 
 
 class AdminUserCreate(BaseModel):

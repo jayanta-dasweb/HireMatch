@@ -13,35 +13,47 @@ import {
   AdminHealth,
   AdminOrg,
   AdminUser,
+  AdminUserDetail,
   AuditLog,
+  adminAssignUserOrgRole,
   adminCreateUser,
   adminFetchAudit,
   adminFetchHealth,
   adminFetchOrgs,
+  adminFetchUser,
   adminFetchUsers,
   adminResetPassword,
   adminSetOrgActive,
+  adminSetSpecialPermissions,
   adminSetUserActive,
   adminUpdateUser,
 } from "@/lib/adminApi";
+import { fetchPermissions, fetchRoles, RbacPermission, RbacRole } from "@/lib/rbacApi";
 import { friendlyErrorMessage } from "@/lib/errors";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Tab = "users" | "orgs" | "activity";
+type ManageMode = "account" | "access" | "password";
 
 function ModalShell({
   title,
   children,
   onClose,
+  wide = false,
 }: {
   title: string;
   children: React.ReactNode;
   onClose: () => void;
+  wide?: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-[9000] flex items-center justify-center p-4">
       <button type="button" className="absolute inset-0 bg-black/55" aria-label="Close" onClick={onClose} />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-[0_24px_64px_rgba(0,0,0,0.28)]">
+      <div
+        className={`relative z-10 max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-[0_24px_64px_rgba(0,0,0,0.28)] ${
+          wide ? "max-w-2xl" : "max-w-lg"
+        }`}
+      >
         <div className="flex items-start justify-between gap-3">
           <h2 className="font-display text-xl font-bold text-ink-950">{title}</h2>
           <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={onClose}>
@@ -80,13 +92,62 @@ export default function PlatformAdminPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<AdminUser | null>(null);
-  const [resetMode, setResetMode] = useState(false);
+  const [detail, setDetail] = useState<AdminUserDetail | null>(null);
+  const [manageMode, setManageMode] = useState<ManageMode>("account");
   const [resetPassword, setResetPassword] = useState("");
+  const [roles, setRoles] = useState<RbacRole[]>([]);
+  const [allPerms, setAllPerms] = useState<RbacPermission[]>([]);
+  const [roleDraft, setRoleDraft] = useState<Record<string, string>>({});
+  const [specialDraft, setSpecialDraft] = useState<Record<string, string[]>>({});
+  const [accessOrgId, setAccessOrgId] = useState<string | null>(null);
 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newAdmin, setNewAdmin] = useState(false);
+
+  async function openUser(u: AdminUser) {
+    setSelected(u);
+    setManageMode("account");
+    setResetPassword("");
+    setDetail(null);
+    setBusy(true);
+    try {
+      const d = await adminFetchUser(u.id);
+      setDetail(d);
+      const rd: Record<string, string> = {};
+      const sd: Record<string, string[]> = {};
+      d.memberships.forEach((m) => {
+        rd[m.organization_id] = m.role_id || m.role;
+        sd[m.organization_id] = [...m.special_permissions];
+      });
+      setRoleDraft(rd);
+      setSpecialDraft(sd);
+      setAccessOrgId(d.memberships[0]?.organization_id ?? null);
+    } catch (err) {
+      alert.error(friendlyErrorMessage(err, "Could not load user"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadAccessCatalog(orgId: string | null) {
+    try {
+      const [r, p] = await Promise.all([
+        fetchRoles({
+          organization_id: orgId || undefined,
+          include_system: true,
+          is_active: true,
+          page_size: 100,
+        }),
+        fetchPermissions({ is_active: true, page_size: 200 }),
+      ]);
+      setRoles(r.items);
+      setAllPerms(p.items);
+    } catch (err) {
+      alert.error(friendlyErrorMessage(err, "Could not load roles/permissions"));
+    }
+  }
 
   async function reload() {
     const [h, u, o, a] = await Promise.all([
@@ -207,7 +268,7 @@ export default function PlatformAdminPage() {
     setBusy(true);
     try {
       await adminResetPassword(selected.id, resetPassword);
-      setResetMode(false);
+      setManageMode("account");
       setResetPassword("");
       alert.success("Password updated. Other sessions signed out.", "Done");
       await reload();
@@ -216,6 +277,51 @@ export default function PlatformAdminPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onSaveRole(orgId: string) {
+    if (!selected) return;
+    const value = roleDraft[orgId];
+    if (!value) return;
+    setBusy(true);
+    try {
+      const byId = roles.find((r) => r.id === value);
+      const body = byId ? { role_id: byId.id } : { role_slug: value };
+      const d = await adminAssignUserOrgRole(selected.id, orgId, body);
+      setDetail(d);
+      setSelected(d);
+      setUsers((prev) => prev.map((u) => (u.id === d.id ? d : u)));
+      alert.success("Org role updated.", "Updated");
+    } catch (err) {
+      alert.error(friendlyErrorMessage(err, "Could not assign role"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onSaveSpecial(orgId: string) {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      const d = await adminSetSpecialPermissions(selected.id, orgId, specialDraft[orgId] || []);
+      setDetail(d);
+      setSelected(d);
+      setUsers((prev) => prev.map((u) => (u.id === d.id ? d : u)));
+      alert.success("Special permissions saved.", "Updated");
+    } catch (err) {
+      alert.error(friendlyErrorMessage(err, "Could not save permissions"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function toggleSpecial(orgId: string, code: string) {
+    setSpecialDraft((prev) => {
+      const cur = new Set(prev[orgId] || []);
+      if (cur.has(code)) cur.delete(code);
+      else cur.add(code);
+      return { ...prev, [orgId]: Array.from(cur).sort() };
+    });
   }
 
   if (loading || !user) return <DashboardSkeleton />;
@@ -233,7 +339,8 @@ export default function PlatformAdminPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-ink-950">Platform Admin</h1>
           <p className="mt-1 max-w-xl text-sm text-ink-500">
-            Create and manage accounts & workspaces. For roles and permissions, use{" "}
+            Manage accounts here. Open a user → Roles & permissions to assign an org role or special
+            grants. Define the catalog in{" "}
             <Link href="/dashboard/admin/rbac" className="font-semibold text-brand-700">
               Access Control
             </Link>
@@ -310,11 +417,7 @@ export default function PlatformAdminPage() {
                   <tr
                     key={u.id}
                     className="cursor-pointer border-b border-ink-50 hover:bg-ink-50/70"
-                    onClick={() => {
-                      setSelected(u);
-                      setResetMode(false);
-                      setResetPassword("");
-                    }}
+                    onClick={() => openUser(u)}
                   >
                     <td className="px-2 py-3 font-semibold text-ink-900">
                       {u.full_name}
@@ -413,15 +516,47 @@ export default function PlatformAdminPage() {
       {selected && (
         <ModalShell
           title={selected.full_name}
+          wide={manageMode === "access"}
           onClose={() => {
             setSelected(null);
-            setResetMode(false);
+            setDetail(null);
+            setManageMode("account");
           }}
         >
           <p className="text-sm text-ink-500">{selected.email}</p>
-          <p className="mt-1 text-xs text-ink-400">{selected.membership_count} workspace memberships</p>
+          <p className="mt-1 text-xs text-ink-400">
+            {(detail?.memberships.length ?? selected.membership_count)} workspace memberships
+          </p>
 
-          {!resetMode ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(
+              [
+                { id: "account" as const, label: "Account" },
+                { id: "access" as const, label: "Roles & permissions" },
+                { id: "password" as const, label: "Password" },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                  manageMode === m.id ? "bg-brand-600 text-white" : "bg-ink-100 text-ink-600"
+                }`}
+                onClick={() => {
+                  setManageMode(m.id);
+                  if (m.id === "access") {
+                    const oid = accessOrgId || detail?.memberships[0]?.organization_id || null;
+                    setAccessOrgId(oid);
+                    void loadAccessCatalog(oid);
+                  }
+                }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {manageMode === "account" && (
             <div className="mt-5 space-y-3">
               <div className="rounded-xl border border-ink-100 p-3">
                 <div className="flex items-center justify-between gap-3">
@@ -485,19 +620,134 @@ export default function PlatformAdminPage() {
                   </button>
                 </div>
               </div>
-
-              <button
-                type="button"
-                className="btn-primary w-full"
-                onClick={() => {
-                  setResetMode(true);
-                  setResetPassword("");
-                }}
-              >
-                Reset password
-              </button>
             </div>
-          ) : (
+          )}
+
+          {manageMode === "access" && (
+            <div className="mt-5 space-y-4">
+              {!detail ? (
+                <p className="text-sm text-ink-500">Loading memberships…</p>
+              ) : detail.memberships.length === 0 ? (
+                <p className="text-sm text-ink-500">This user has no organization memberships yet.</p>
+              ) : (
+                <>
+                  <label className="block text-xs font-semibold text-ink-600">
+                    Organization
+                    <select
+                      className="admin-input mt-1"
+                      value={accessOrgId || ""}
+                      onChange={(e) => {
+                        const oid = e.target.value;
+                        setAccessOrgId(oid);
+                        void loadAccessCatalog(oid);
+                      }}
+                    >
+                      {detail.memberships.map((m) => (
+                        <option key={m.organization_id} value={m.organization_id}>
+                          {m.organization_name} ({m.organization_slug})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {detail.memberships
+                    .filter((m) => m.organization_id === accessOrgId)
+                    .map((m) => (
+                      <div key={m.organization_id} className="space-y-4">
+                        <div className="rounded-xl border border-ink-100 p-3">
+                          <p className="text-sm font-semibold text-ink-900">Org role</p>
+                          <p className="mt-0.5 text-xs text-ink-500">
+                            Base permissions come from this role. Current: {m.role}
+                          </p>
+                          <div className="mt-3 flex flex-wrap items-end gap-2">
+                            <select
+                              className="admin-input flex-1"
+                              value={roleDraft[m.organization_id] || ""}
+                              onChange={(e) =>
+                                setRoleDraft((prev) => ({
+                                  ...prev,
+                                  [m.organization_id]: e.target.value,
+                                }))
+                              }
+                            >
+                              {roles.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.name} ({r.slug}){r.is_system ? "" : " · custom"}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="btn-primary px-4 py-2 text-xs"
+                              disabled={busy}
+                              onClick={() => onSaveRole(m.organization_id)}
+                            >
+                              Save role
+                            </button>
+                          </div>
+                          {m.role_permissions.length > 0 && (
+                            <p className="mt-2 text-[11px] text-ink-400">
+                              Role grants: {m.role_permissions.join(", ")}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-ink-100 p-3">
+                          <p className="text-sm font-semibold text-ink-900">Special permissions</p>
+                          <p className="mt-0.5 text-xs text-ink-500">
+                            Extra grants for this user only (on top of the role).
+                          </p>
+                          <div className="mt-3 max-h-48 space-y-1.5 overflow-y-auto">
+                            {allPerms.map((p) => {
+                              const checked = (specialDraft[m.organization_id] || []).includes(p.code);
+                              const fromRole = m.role_permissions.includes(p.code);
+                              return (
+                                <label
+                                  key={p.id}
+                                  className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-ink-50"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="mt-0.5 rounded border-ink-300"
+                                    checked={checked}
+                                    onChange={() => toggleSpecial(m.organization_id, p.code)}
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-medium text-ink-800">{p.code}</span>
+                                    <span className="block text-[11px] text-ink-400">
+                                      {p.name}
+                                      {fromRole ? " · already on role" : ""}
+                                    </span>
+                                  </span>
+                                </label>
+                              );
+                            })}
+                            {allPerms.length === 0 && (
+                              <p className="text-xs text-ink-400">No active permissions found.</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-primary mt-3 px-4 py-2 text-xs"
+                            disabled={busy}
+                            onClick={() => onSaveSpecial(m.organization_id)}
+                          >
+                            Save special permissions
+                          </button>
+                          {m.effective_permissions.length > 0 && (
+                            <p className="mt-2 text-[11px] text-ink-400">
+                              Effective: {m.effective_permissions.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </>
+              )}
+            </div>
+          )}
+
+          {manageMode === "password" && (
             <form onSubmit={onReset} className="mt-5 space-y-3">
               <Field
                 label="New password"
@@ -508,7 +758,7 @@ export default function PlatformAdminPage() {
                 onChange={(e) => setResetPassword(e.target.value)}
               />
               <div className="flex justify-end gap-2">
-                <button type="button" className="btn-ghost" onClick={() => setResetMode(false)}>
+                <button type="button" className="btn-ghost" onClick={() => setManageMode("account")}>
                   Back
                 </button>
                 <PrimaryButton type="submit" disabled={busy} className="w-auto">

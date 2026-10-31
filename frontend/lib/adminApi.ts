@@ -10,6 +10,23 @@ export type AdminUser = {
   membership_count: number;
 };
 
+export type AdminMembership = {
+  organization_id: string;
+  organization_name: string;
+  organization_slug: string;
+  role: string;
+  role_id: string | null;
+  is_personal: boolean;
+  is_active: boolean;
+  role_permissions: string[];
+  special_permissions: string[];
+  effective_permissions: string[];
+};
+
+export type AdminUserDetail = AdminUser & {
+  memberships: AdminMembership[];
+};
+
 export type AdminOrg = {
   id: string;
   name: string;
@@ -43,6 +60,30 @@ export function adminFetchHealth() {
 
 export function adminFetchUsers() {
   return apiFetch<AdminUser[]>("/admin/users", {}, true);
+}
+
+export function adminFetchUser(id: string) {
+  return apiFetch<AdminUserDetail>(`/admin/users/${id}`, {}, true);
+}
+
+export function adminAssignUserOrgRole(
+  userId: string,
+  orgId: string,
+  body: { role_id?: string; role_slug?: string },
+) {
+  return apiFetch<AdminUserDetail>(
+    `/admin/users/${userId}/organizations/${orgId}/role`,
+    { method: "PATCH", body: JSON.stringify(body) },
+    true,
+  );
+}
+
+export function adminSetSpecialPermissions(userId: string, orgId: string, permission_codes: string[]) {
+  return apiFetch<AdminUserDetail>(
+    `/admin/users/${userId}/organizations/${orgId}/special-permissions`,
+    { method: "PUT", body: JSON.stringify({ permission_codes }) },
+    true,
+  );
 }
 
 export function adminFetchOrgs() {

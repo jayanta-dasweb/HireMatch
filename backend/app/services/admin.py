@@ -78,29 +78,42 @@ def list_users(db: Session) -> list[AdminUserOut]:
 
 def get_user_detail(db: Session, user_id: UUID) -> AdminUserDetailOut:
     from app.models import OrganizationMember
+    from app.services import rbac as rbac_svc
 
     user = db.scalar(
         select(User)
         .options(
             joinedload(User.profile),
             joinedload(User.memberships).joinedload(OrganizationMember.organization),
+            joinedload(User.memberships).joinedload(OrganizationMember.rbac_role),
         )
         .where(User.id == user_id)
     )
     if not user:
         raise not_found("User not found")
 
-    memberships = [
-        AdminMembershipOut(
-            organization_id=m.organization_id,
-            organization_name=m.organization.name if m.organization else "",
-            organization_slug=m.organization.slug if m.organization else "",
-            role=m.role.value if hasattr(m.role, "value") else str(m.role),
-            is_personal=m.organization.is_personal if m.organization else False,
-            is_active=m.organization.is_active if m.organization else False,
+    memberships: list[AdminMembershipOut] = []
+    for m in user.memberships:
+        role_slug = m.rbac_role.slug if m.rbac_role else (m.role.value if m.role else "candidate")
+        role_perms = sorted(rbac_svc.permission_codes_for_role(db, m.role_id)) if m.role_id else []
+        special = rbac_svc.list_user_special_permissions(
+            db, user_id=user.id, organization_id=m.organization_id
         )
-        for m in user.memberships
-    ]
+        effective = sorted(set(role_perms) | set(special))
+        memberships.append(
+            AdminMembershipOut(
+                organization_id=m.organization_id,
+                organization_name=m.organization.name if m.organization else "",
+                organization_slug=m.organization.slug if m.organization else "",
+                role=role_slug,
+                role_id=m.role_id,
+                is_personal=m.organization.is_personal if m.organization else False,
+                is_active=m.organization.is_active if m.organization else False,
+                role_permissions=role_perms,
+                special_permissions=special,
+                effective_permissions=effective,
+            )
+        )
     base = _user_out(user)
     return AdminUserDetailOut(**base.model_dump(), memberships=memberships)
 

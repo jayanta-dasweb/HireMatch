@@ -17,6 +17,7 @@ from app.models import (
     Role,
     RolePermission,
     User,
+    UserPermission,
 )
 from app.services.audit import record_audit
 from app.services.rbac_seed import seed_rbac_defaults
@@ -117,11 +118,95 @@ def user_permissions(db: Session, *, user: User, organization_id: UUID) -> set[s
     )
     if not membership:
         return set()
+    role_codes: set[str] = set()
     if membership.role_id:
-        return permission_codes_for_role(db, membership.role_id)
-    # Fallback for legacy rows without role_id
-    role = get_system_role(db, membership.role.value)
-    return permission_codes_for_role(db, role.id)
+        role_codes = permission_codes_for_role(db, membership.role_id)
+    else:
+        role = get_system_role(db, membership.role.value)
+        role_codes = permission_codes_for_role(db, role.id)
+
+    special = set(
+        db.scalars(
+            select(Permission.code)
+            .join(UserPermission, UserPermission.permission_id == Permission.id)
+            .where(
+                UserPermission.user_id == user.id,
+                UserPermission.organization_id == organization_id,
+                Permission.is_active.is_(True),
+            )
+        ).all()
+    )
+    return role_codes | special
+
+
+def list_user_special_permissions(db: Session, *, user_id: UUID, organization_id: UUID) -> list[str]:
+    return list(
+        db.scalars(
+            select(Permission.code)
+            .join(UserPermission, UserPermission.permission_id == Permission.id)
+            .where(
+                UserPermission.user_id == user_id,
+                UserPermission.organization_id == organization_id,
+            )
+            .order_by(Permission.code)
+        ).all()
+    )
+
+
+def sync_user_special_permissions(
+    db: Session,
+    *,
+    actor_id: UUID,
+    user_id: UUID,
+    organization_id: UUID,
+    permission_codes: list[str],
+) -> list[str]:
+    """Replace direct/special permissions for a user in one org."""
+    from app.services.organizations import get_membership
+
+    if not get_membership(db, user_id=user_id, organization_id=organization_id):
+        raise not_found("User is not a member of this organization")
+
+    codes = {c.strip().lower() for c in permission_codes}
+    perms = list(db.scalars(select(Permission).where(Permission.code.in_(codes))).all()) if codes else []
+    found = {p.code for p in perms}
+    missing = codes - found
+    if missing:
+        raise bad_request(f"Unknown permissions: {', '.join(sorted(missing))}")
+    wanted = {p.id for p in perms}
+
+    existing = list(
+        db.scalars(
+            select(UserPermission).where(
+                UserPermission.user_id == user_id,
+                UserPermission.organization_id == organization_id,
+            )
+        ).all()
+    )
+    existing_ids = {e.permission_id for e in existing}
+    for row in existing:
+        if row.permission_id not in wanted:
+            db.delete(row)
+    for pid in wanted - existing_ids:
+        db.add(
+            UserPermission(
+                user_id=user_id,
+                organization_id=organization_id,
+                permission_id=pid,
+                created_by_user_id=actor_id,
+            )
+        )
+    record_audit(
+        db,
+        action="rbac.user_special_permissions_updated",
+        actor_user_id=actor_id,
+        organization_id=organization_id,
+        resource_type="user",
+        resource_id=str(user_id),
+        metadata={"permission_codes": sorted(codes)},
+    )
+    db.commit()
+    return list_user_special_permissions(db, user_id=user_id, organization_id=organization_id)
 
 
 def require_permission(db: Session, *, user: User, organization_id: UUID, code: str) -> OrganizationMember:

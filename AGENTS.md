@@ -10,3 +10,4 @@ Product name is **HireMatch**. The local folder (e.g. `jdasproject`) is only a p
 6. Never fake AI, payments, or email delivery.
 7. Never commit secrets.
 8. Commit and push every change with a simple developer message (no Cursor credits).
+9. **Master-driven ops:** day-to-day user/org/admin work happens from Platform Admin UI — never require raw SQL/DB for that. Secrets, SMTP, Docker, migrations stay ops-side (not in UI).

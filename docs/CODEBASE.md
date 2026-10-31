@@ -46,8 +46,17 @@ Brand colors: teal `brand-*` + slate `ink-*` on `surface-muted`.
 | UI page | `frontend/app/.../page.tsx` |
 | Shared look | `frontend/components/ui.tsx` |
 
+## Master-driven ops
+
+Platform Admin (`/dashboard/admin` + `/api/v1/admin/*`) is the control plane for users, orgs, admin flags, verify, password reset, and audit. Operators should not need raw SQL for day-to-day work. Do **not** put secrets/SMTP/Docker/migrations into the UI.
+
+| Task | Edit |
+|------|------|
+| Platform admin ops | `services/admin.py` + `api/v1/admin.py` + `app/dashboard/admin/page.tsx` |
+
 ## Don’t
 
 - Don’t paste the same token/org create code in two files
 - Don’t put business rules only in the frontend
 - Don’t add new frameworks unless needed
+- Don’t tell operators to edit the DB by hand for user/org admin tasks

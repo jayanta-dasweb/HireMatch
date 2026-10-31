@@ -11,6 +11,7 @@
 - [x] Auth, orgs, RBAC, tenant isolation tests
 - [x] Next.js auth pages + dashboard
 - [x] Docker Compose development stack
+- [x] Master-driven Platform Admin console (create/edit users, grant admin, verify, reset password, org active, audit) — no raw DB for day-to-day ops
 
 ### Production-ready setup
 - [x] Multi-stage Dockerfiles (dev + prod targets), non-root users

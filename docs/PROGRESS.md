@@ -13,6 +13,7 @@
 - [x] Docker Compose development stack
 - [x] Master-driven Platform Admin console (create/edit users, grant admin, verify, reset password, org active, audit) — no raw DB for day-to-day ops
 - [x] Advanced Spatie-style RBAC (permissions, system + org roles, matrix UI, Team invites/assign, `require_permission`)
+- [x] RBAC masters scale UI: search/filter/pagination, active/inactive, who/when audit trail
 
 ### Production-ready setup
 - [x] Multi-stage Dockerfiles (dev + prod targets), non-root users

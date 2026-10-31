@@ -84,8 +84,12 @@ def test_system_role_matrix_platform_only(client):
 
     roles = client.get("/api/v1/rbac/roles", headers=headers)
     assert roles.status_code == 200
-    org_admin = next(r for r in roles.json() if r["slug"] == "org_admin")
+    body = roles.json()
+    items = body["items"] if isinstance(body, dict) else body
+    org_admin = next(r for r in items if r["slug"] == "org_admin")
     assert "org.roles.manage" in org_admin["permissions"]
+    assert "is_active" in org_admin
+    assert "updated_at" in org_admin
 
     updated = client.patch(
         f"/api/v1/rbac/roles/{org_admin['id']}",
@@ -93,3 +97,7 @@ def test_system_role_matrix_platform_only(client):
         json={"permission_codes": org_admin["permissions"]},
     )
     assert updated.status_code == 200
+
+    audit = client.get("/api/v1/rbac/audit", headers=headers)
+    assert audit.status_code == 200
+    assert "items" in audit.json()

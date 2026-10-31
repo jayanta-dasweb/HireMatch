@@ -56,12 +56,16 @@ export default function TeamPage() {
   const editRole = useMemo(() => orgRoles.find((r) => r.id === editRoleId) || null, [orgRoles, editRoleId]);
 
   async function reload(targetOrg: string) {
-    const [m, r] = await Promise.all([fetchOrgMembers(targetOrg), fetchRoles(targetOrg, true)]);
+    const [m, r] = await Promise.all([
+      fetchOrgMembers(targetOrg),
+      fetchRoles({ organization_id: targetOrg, include_system: true, is_active: true, page: 1, page_size: 100 }),
+    ]);
     setMembers(m);
-    setRoles(r);
+    setRoles(r.items);
     if (can(user?.memberships.find((x) => x.organization_id === targetOrg), "org.roles.manage") || user?.is_platform_admin) {
       try {
-        setPermissions(await fetchPermissions());
+        const perms = await fetchPermissions({ is_active: true, page: 1, page_size: 100 });
+        setPermissions(perms.items);
       } catch {
         setPermissions([]);
       }

@@ -24,6 +24,16 @@ def create_workspace(
     owner_role: MemberRole,
     is_personal: bool,
     slug_seed: str,
+    legal_name: str | None = None,
+    description: str | None = None,
+    industry: str | None = None,
+    company_size: str | None = None,
+    website: str | None = None,
+    contact_email: str | None = None,
+    contact_phone: str | None = None,
+    country: str | None = None,
+    city: str | None = None,
+    address_line: str | None = None,
 ) -> Organization:
     """Create an organization, add the owner, and attach the free plan if present."""
     from app.services.rbac import get_system_role, legacy_member_role
@@ -32,6 +42,16 @@ def create_workspace(
         name=name,
         slug=unique_org_slug(db, slug_seed),
         is_personal=is_personal,
+        legal_name=legal_name,
+        description=description,
+        industry=industry,
+        company_size=company_size,
+        website=website,
+        contact_email=contact_email,
+        contact_phone=contact_phone,
+        country=country,
+        city=city,
+        address_line=address_line,
     )
     db.add(org)
     db.flush()

@@ -21,9 +21,26 @@ function DashboardHome() {
   const { user, loading, setUser } = useCurrentUser();
   const { activeMembership, setActiveOrgId } = useOrg();
   const [showCreateOrg, setShowCreateOrg] = useState(false);
-  const [orgName, setOrgName] = useState("");
-  const [orgSlug, setOrgSlug] = useState("");
   const [busy, setBusy] = useState(false);
+  const emptyOrgForm = {
+    name: "",
+    slug: "",
+    legal_name: "",
+    description: "",
+    industry: "",
+    company_size: "",
+    website: "",
+    contact_email: "",
+    contact_phone: "",
+    country: "",
+    city: "",
+    address_line: "",
+  };
+  const [orgForm, setOrgForm] = useState(emptyOrgForm);
+
+  function patchOrgForm(key: keyof typeof emptyOrgForm, value: string) {
+    setOrgForm((prev) => ({ ...prev, [key]: value }));
+  }
 
   useEffect(() => {
     if (search.get("newOrg") === "1") setShowCreateOrg(true);
@@ -37,9 +54,20 @@ function DashboardHome() {
     e.preventDefault();
     setBusy(true);
     try {
+      const trim = (v: string) => v.trim() || undefined;
       const org = await createOrganization({
-        name: orgName.trim(),
-        slug: orgSlug.trim() || undefined,
+        name: orgForm.name.trim(),
+        slug: trim(orgForm.slug),
+        legal_name: trim(orgForm.legal_name),
+        description: trim(orgForm.description),
+        industry: trim(orgForm.industry),
+        company_size: trim(orgForm.company_size),
+        website: trim(orgForm.website),
+        contact_email: trim(orgForm.contact_email),
+        contact_phone: trim(orgForm.contact_phone),
+        country: trim(orgForm.country),
+        city: trim(orgForm.city),
+        address_line: trim(orgForm.address_line),
       });
       try {
         localStorage.setItem("hirematch_active_org", org.id);
@@ -51,8 +79,7 @@ function DashboardHome() {
       setUser(me);
       setActiveOrgId(org.id);
       setShowCreateOrg(false);
-      setOrgName("");
-      setOrgSlug("");
+      setOrgForm(emptyOrgForm);
       alert.success("Organization created. You are the org admin.", "Workspace ready");
       router.replace("/dashboard");
     } catch (err) {
@@ -209,39 +236,135 @@ function DashboardHome() {
             aria-label="Close"
             onClick={() => setShowCreateOrg(false)}
           />
-          <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-[0_24px_64px_rgba(0,0,0,0.28)]">
+          <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-[0_24px_64px_rgba(0,0,0,0.28)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-xl font-bold text-ink-950">Create organization</h2>
                 <p className="mt-1 text-sm text-ink-500">
-                  New company workspace. You become org admin. Masters stay org-specific.
+                  Company workspace profile. You become org admin; team data stays in this tenant.
                 </p>
               </div>
               <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => setShowCreateOrg(false)}>
                 Close
               </button>
             </div>
-            <form onSubmit={onCreateOrg} className="mt-5 space-y-3">
-              <Field
-                label="Organization name"
-                required
-                minLength={2}
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                placeholder="Acme Recruiting"
-              />
-              <Field
-                label="Slug (optional)"
-                value={orgSlug}
-                onChange={(e) => setOrgSlug(e.target.value)}
-                placeholder="acme-recruiting"
-              />
-              <div className="flex justify-end gap-2 pt-2">
+            <form onSubmit={onCreateOrg} className="mt-5 space-y-5">
+              <section className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Basics</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Display name"
+                    required
+                    minLength={2}
+                    value={orgForm.name}
+                    onChange={(e) => patchOrgForm("name", e.target.value)}
+                    placeholder="Acme Recruiting"
+                  />
+                  <Field
+                    label="Legal / registered name"
+                    value={orgForm.legal_name}
+                    onChange={(e) => patchOrgForm("legal_name", e.target.value)}
+                    placeholder="Acme Recruiting Pvt Ltd"
+                  />
+                </div>
+                <Field
+                  label="URL slug (optional)"
+                  value={orgForm.slug}
+                  onChange={(e) => patchOrgForm("slug", e.target.value)}
+                  placeholder="acme-recruiting"
+                />
+                <label className="block text-sm font-medium text-ink-700">
+                  About the company
+                  <textarea
+                    className="admin-input mt-1 min-h-[88px] resize-y"
+                    value={orgForm.description}
+                    onChange={(e) => patchOrgForm("description", e.target.value)}
+                    placeholder="What you hire for, markets you serve…"
+                    maxLength={2000}
+                  />
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Industry"
+                    value={orgForm.industry}
+                    onChange={(e) => patchOrgForm("industry", e.target.value)}
+                    placeholder="Staffing / IT / Healthcare"
+                  />
+                  <label className="block text-sm font-medium text-ink-700">
+                    Company size
+                    <select
+                      className="admin-input mt-1"
+                      value={orgForm.company_size}
+                      onChange={(e) => patchOrgForm("company_size", e.target.value)}
+                    >
+                      <option value="">Select size</option>
+                      <option value="1-10">1–10</option>
+                      <option value="11-50">11–50</option>
+                      <option value="51-200">51–200</option>
+                      <option value="201-500">201–500</option>
+                      <option value="501-1000">501–1000</option>
+                      <option value="1000+">1000+</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+
+              <section className="space-y-3 border-t border-ink-100 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Contact</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Website"
+                    type="url"
+                    value={orgForm.website}
+                    onChange={(e) => patchOrgForm("website", e.target.value)}
+                    placeholder="https://acme.example"
+                  />
+                  <Field
+                    label="Contact email"
+                    type="email"
+                    value={orgForm.contact_email}
+                    onChange={(e) => patchOrgForm("contact_email", e.target.value)}
+                    placeholder="hr@acme.example"
+                  />
+                  <Field
+                    label="Phone"
+                    value={orgForm.contact_phone}
+                    onChange={(e) => patchOrgForm("contact_phone", e.target.value)}
+                    placeholder="+91 …"
+                  />
+                </div>
+              </section>
+
+              <section className="space-y-3 border-t border-ink-100 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Location</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Country"
+                    value={orgForm.country}
+                    onChange={(e) => patchOrgForm("country", e.target.value)}
+                    placeholder="India"
+                  />
+                  <Field
+                    label="City"
+                    value={orgForm.city}
+                    onChange={(e) => patchOrgForm("city", e.target.value)}
+                    placeholder="Bengaluru"
+                  />
+                </div>
+                <Field
+                  label="Address"
+                  value={orgForm.address_line}
+                  onChange={(e) => patchOrgForm("address_line", e.target.value)}
+                  placeholder="Street, area, postal code"
+                />
+              </section>
+
+              <div className="flex justify-end gap-2 border-t border-ink-100 pt-4">
                 <button type="button" className="btn-ghost" onClick={() => setShowCreateOrg(false)}>
                   Cancel
                 </button>
                 <PrimaryButton type="submit" disabled={busy} className="w-auto">
-                  {busy ? "Creating…" : "Create"}
+                  {busy ? "Creating…" : "Create organization"}
                 </PrimaryButton>
               </div>
             </form>

@@ -174,10 +174,35 @@ export type OrganizationOut = {
   slug: string;
   is_personal: boolean;
   is_active: boolean;
+  legal_name?: string | null;
+  description?: string | null;
+  industry?: string | null;
+  company_size?: string | null;
+  website?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  country?: string | null;
+  city?: string | null;
+  address_line?: string | null;
   created_at: string;
 };
 
-export function createOrganization(body: { name: string; slug?: string }) {
+export type OrganizationCreateBody = {
+  name: string;
+  slug?: string;
+  legal_name?: string;
+  description?: string;
+  industry?: string;
+  company_size?: string;
+  website?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  country?: string;
+  city?: string;
+  address_line?: string;
+};
+
+export function createOrganization(body: OrganizationCreateBody) {
   return apiFetch<OrganizationOut>("/organizations", { method: "POST", body: JSON.stringify(body) }, true);
 }
 

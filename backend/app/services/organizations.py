@@ -49,7 +49,23 @@ def require_org_manager(db: Session, *, user: User, organization_id: UUID) -> Or
     return require_permission(db, user=user, organization_id=organization_id, code="org.members.create")
 
 
-def create_organization(db: Session, *, user: User, name: str, slug: str | None) -> Organization:
+def create_organization(
+    db: Session,
+    *,
+    user: User,
+    name: str,
+    slug: str | None = None,
+    legal_name: str | None = None,
+    description: str | None = None,
+    industry: str | None = None,
+    company_size: str | None = None,
+    website: str | None = None,
+    contact_email: str | None = None,
+    contact_phone: str | None = None,
+    country: str | None = None,
+    city: str | None = None,
+    address_line: str | None = None,
+) -> Organization:
     org = create_workspace(
         db,
         name=name,
@@ -57,6 +73,16 @@ def create_organization(db: Session, *, user: User, name: str, slug: str | None)
         owner_role=MemberRole.org_admin,
         is_personal=False,
         slug_seed=slugify(slug or name),
+        legal_name=legal_name,
+        description=description,
+        industry=industry,
+        company_size=company_size,
+        website=website,
+        contact_email=contact_email,
+        contact_phone=contact_phone,
+        country=country,
+        city=city,
+        address_line=address_line,
     )
     record_audit(
         db,
@@ -65,6 +91,11 @@ def create_organization(db: Session, *, user: User, name: str, slug: str | None)
         organization_id=org.id,
         resource_type="organization",
         resource_id=str(org.id),
+        metadata={
+            "industry": industry,
+            "company_size": company_size,
+            "country": country,
+        },
     )
     db.commit()
     db.refresh(org)

@@ -26,7 +26,22 @@ def create_organization(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return orgs.create_organization(db, user=user, name=payload.name, slug=payload.slug)
+    return orgs.create_organization(
+        db,
+        user=user,
+        name=payload.name,
+        slug=payload.slug,
+        legal_name=payload.legal_name,
+        description=payload.description,
+        industry=payload.industry,
+        company_size=payload.company_size,
+        website=payload.website,
+        contact_email=str(payload.contact_email) if payload.contact_email else None,
+        contact_phone=payload.contact_phone,
+        country=payload.country,
+        city=payload.city,
+        address_line=payload.address_line,
+    )
 
 
 @router.get("", response_model=list[OrganizationOut])

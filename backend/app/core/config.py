@@ -1,16 +1,19 @@
 from functools import lru_cache
-from typing import List
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+WEAK_SECRETS = {
+    "change-me-to-a-long-random-string-at-least-32-chars",
+    "hirematch-dev-secret-key-change-in-prod-32",
+    "test-secret-key-hirematch-ai-phase1-32chars",
+}
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    """All settings come from environment variables (see .env.example)."""
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "HireMatch AI"
     app_env: str = Field(default="development", alias="APP_ENV")
@@ -25,16 +28,9 @@ class Settings(BaseSettings):
 
     database_url: str = Field(..., alias="DATABASE_URL")
     redis_url: str = Field(default="redis://redis:6379/0", alias="REDIS_URL")
-
-    cors_origins: str = Field(
-        default="http://localhost:3000",
-        alias="CORS_ORIGINS",
-    )
+    cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
     trusted_hosts: str = Field(default="*", alias="TRUSTED_HOSTS")
-
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
-    rate_limit_default: str = Field(default="120/minute", alias="RATE_LIMIT_DEFAULT")
-    rate_limit_auth: str = Field(default="20/minute", alias="RATE_LIMIT_AUTH")
 
     email_backend: str = Field(default="console", alias="EMAIL_BACKEND")
     smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
@@ -43,39 +39,27 @@ class Settings(BaseSettings):
     smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
     smtp_from: str = Field(default="noreply@hirematch.local", alias="SMTP_FROM")
     frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
-
     web_concurrency: int = Field(default=2, alias="WEB_CONCURRENCY")
 
     @field_validator("secret_key")
     @classmethod
-    def secret_must_be_strong(cls, value: str) -> str:
+    def secret_must_be_long(cls, value: str) -> str:
         if len(value) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters")
-        weak = {
-            "change-me-to-a-long-random-string-at-least-32-chars",
-            "test-secret-key-hirematch-ai-phase1-32chars",
-            "hirematch-dev-secret-key-change-in-prod-32",
-        }
         return value
 
     @model_validator(mode="after")
-    def validate_production_guards(self) -> "Settings":
-        if self.is_production:
-            if self.debug:
-                raise ValueError("DEBUG must be false when APP_ENV=production")
-            if self.secret_key in {
-                "change-me-to-a-long-random-string-at-least-32-chars",
-                "hirematch-dev-secret-key-change-in-prod-32",
-                "test-secret-key-hirematch-ai-phase1-32chars",
-            }:
-                raise ValueError("SECRET_KEY must be replaced for production")
-            if self.email_backend == "console":
-                # Allow boot but operators must configure SMTP before relying on mail
-                pass
-            if "*" in self.cors_origin_list:
-                raise ValueError("CORS_ORIGINS must not include * in production")
-            if self.trusted_hosts.strip() == "*":
-                raise ValueError("TRUSTED_HOSTS must be explicitly set in production")
+    def production_must_be_safe(self) -> "Settings":
+        if not self.is_production:
+            return self
+        if self.debug:
+            raise ValueError("DEBUG must be false in production")
+        if self.secret_key in WEAK_SECRETS:
+            raise ValueError("SECRET_KEY must be replaced for production")
+        if "*" in self.cors_origin_list:
+            raise ValueError("CORS_ORIGINS must not include * in production")
+        if self.trusted_hosts.strip() == "*":
+            raise ValueError("TRUSTED_HOSTS must be set in production")
         return self
 
     @property
@@ -83,11 +67,11 @@ class Settings(BaseSettings):
         return self.app_env.lower() == "production"
 
     @property
-    def cors_origin_list(self) -> List[str]:
+    def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
-    def trusted_host_list(self) -> List[str]:
+    def trusted_host_list(self) -> list[str]:
         return [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
 
 

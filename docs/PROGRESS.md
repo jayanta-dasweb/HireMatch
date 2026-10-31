@@ -26,6 +26,12 @@
 - [x] GitHub Actions CI (pytest, Next build, Docker image builds)
 - [x] Makefile + deployment documentation
 
+### Readability / DRY cleanup
+- [x] Shared `workspace.py`, `tokens.py`, `errors.py`, `timeutil.py`
+- [x] Thinner auth/org routes and services
+- [x] Shared frontend `components/ui.tsx` + simpler `lib/api.ts`
+- [x] `docs/CODEBASE.md` map for new contributors
+
 ## Test results (after production hardening)
 
 ```text

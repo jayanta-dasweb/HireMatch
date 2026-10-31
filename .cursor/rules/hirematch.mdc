@@ -5,10 +5,9 @@ alwaysApply: true
 
 # HireMatch AI
 
-- Follow phased delivery in `docs/IMPLEMENTATION_BACKLOG.md` and `docs/PROGRESS.md`.
-- Do not implement Phase N+1 features until Phase N is reviewed.
-- Never fake AI results, payment success, or email delivery without a configured provider.
-- Never commit secrets; use `.env.example` only.
-- Enforce tenant isolation and authorization in the backend.
-- Prefer Docker Compose for local runs so any clone works the same.
-- After substantive changes, update `docs/PROGRESS.md` and commit/push when the user requests remote sync.
+- Read `docs/CODEBASE.md` first — keep code simple and DRY.
+- Thin routes; business logic in `services/`; reuse `tokens.py`, `workspace.py`, `errors.py`.
+- Frontend: reuse `components/ui.tsx` and `lib/api.ts`.
+- Follow `docs/PROGRESS.md` phases. Do not skip ahead without approval.
+- Never fake AI, payments, or email delivery. Never commit secrets.
+- Prefer Docker Compose so any clone works the same.

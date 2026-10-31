@@ -22,30 +22,32 @@ from app.services import auth as auth_service
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _dev_email_extras(raw_token: str | None, field: str) -> dict:
+    """Only expose raw tokens in local/dev console email mode."""
+    settings = get_settings()
+    if settings.email_backend != "console":
+        return {"email_delivery": "attempted_via_smtp"}
+    extras = {"email_delivery": "console_only_not_sent"}
+    if raw_token and not settings.is_production:
+        extras[field] = raw_token
+    return extras
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 def register(request: Request, payload: RegisterRequest, db: Session = Depends(get_db)):
-    settings = get_settings()
     user, raw_verify = auth_service.register_user(
         db,
         email=payload.email,
         password=payload.password,
         full_name=payload.full_name,
     )
-    body: dict = {
+    return {
         "message": "Registration successful. Verify your email to activate full access.",
         "user_id": str(user.id),
         "email": user.email,
+        **_dev_email_extras(raw_verify, "verification_token"),
     }
-    # Never pretend SMTP worked. Dev-only token exposure when console backend is used.
-    if settings.email_backend == "console" and not settings.is_production:
-        body["verification_token"] = raw_verify
-        body["email_delivery"] = "console_only_not_sent"
-    elif settings.email_backend == "console":
-        body["email_delivery"] = "console_only_not_sent"
-    else:
-        body["email_delivery"] = "attempted_via_smtp"
-    return body
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -81,15 +83,11 @@ def verify_email(request: Request, payload: VerifyEmailRequest, db: Session = De
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
 @limiter.limit("5/minute")
 def forgot_password(request: Request, payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    settings = get_settings()
     raw = auth_service.forgot_password(db, email=payload.email)
-    body: dict = {
+    return {
         "message": "If an account exists for that email, password reset instructions were issued.",
+        **_dev_email_extras(raw, "reset_token"),
     }
-    if raw and settings.email_backend == "console" and not settings.is_production:
-        body["reset_token"] = raw
-        body["email_delivery"] = "console_only_not_sent"
-    return body
 
 
 @router.post("/reset-password", response_model=MessageResponse)

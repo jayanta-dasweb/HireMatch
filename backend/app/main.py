@@ -15,21 +15,8 @@ from app.core.config import get_settings
 from app.core.middleware import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] correlation_id=%(correlation_id)s %(message)s",
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 logger = logging.getLogger("hirematch")
-
-
-class CorrelationFilter(logging.Filter):
-    def filter(self, record: logging.LogRecord) -> bool:
-        if not hasattr(record, "correlation_id"):
-            record.correlation_id = "-"
-        return True
-
-
-logging.getLogger().addFilter(CorrelationFilter())
 
 
 @asynccontextmanager
@@ -37,26 +24,21 @@ async def lifespan(_: FastAPI):
     settings = get_settings()
     logger.info("Starting %s (%s)", settings.app_name, settings.app_env)
     if settings.is_production and settings.email_backend == "console":
-        logger.warning(
-            "EMAIL_BACKEND=console in production — outbound email is not delivered until SMTP is configured"
-        )
+        logger.warning("EMAIL_BACKEND=console — emails are not delivered until SMTP is configured")
     yield
-    logger.info("Shutting down %s", settings.app_name)
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    docs_url = None if settings.is_production else "/docs"
-    openapi_url = None if settings.is_production else "/openapi.json"
-    redoc_url = None if settings.is_production else "/redoc"
+    show_docs = not settings.is_production
 
     app = FastAPI(
         title=settings.app_name,
         version="0.1.0",
         lifespan=lifespan,
-        docs_url=docs_url,
-        openapi_url=openapi_url,
-        redoc_url=redoc_url,
+        docs_url="/docs" if show_docs else None,
+        openapi_url="/openapi.json" if show_docs else None,
+        redoc_url="/redoc" if show_docs else None,
     )
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -75,25 +57,20 @@ def create_app() -> FastAPI:
     )
 
     @app.middleware("http")
-    async def correlation_id_middleware(request: Request, call_next):
-        correlation_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-        request.state.correlation_id = correlation_id
+    async def add_request_id(request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+        request.state.correlation_id = request_id
         response = await call_next(request)
-        response.headers["X-Request-ID"] = correlation_id
+        response.headers["X-Request-ID"] = request_id
         return response
 
     @app.exception_handler(Exception)
-    async def unhandled_exception_handler(request: Request, exc: Exception):
-        correlation_id = getattr(request.state, "correlation_id", "-")
-        logger.exception(
-            "Unhandled error on %s %s",
-            request.method,
-            request.url.path,
-            extra={"correlation_id": correlation_id},
-        )
+    async def on_error(request: Request, exc: Exception):
+        request_id = getattr(request.state, "correlation_id", "-")
+        logger.exception("Unhandled error %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=500,
-            content={"detail": "Internal server error", "request_id": correlation_id},
+            content={"detail": "Internal server error", "request_id": request_id},
         )
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)

@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const TOKEN_KEY = "hirematch_tokens";
 
 export type TokenPair = {
   access_token: string;
@@ -26,12 +27,11 @@ export type UserMe = {
   created_at: string;
 };
 
-function getStoredTokens(): TokenPair | null {
+function readTokens(): TokenPair | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem("hirematch_tokens");
-  if (!raw) return null;
   try {
-    return JSON.parse(raw) as TokenPair;
+    const raw = localStorage.getItem(TOKEN_KEY);
+    return raw ? (JSON.parse(raw) as TokenPair) : null;
   } catch {
     return null;
   }
@@ -39,102 +39,68 @@ function getStoredTokens(): TokenPair | null {
 
 export function storeTokens(tokens: TokenPair | null) {
   if (typeof window === "undefined") return;
-  if (!tokens) {
-    localStorage.removeItem("hirematch_tokens");
-    return;
-  }
-  localStorage.setItem("hirematch_tokens", JSON.stringify(tokens));
+  if (!tokens) localStorage.removeItem(TOKEN_KEY);
+  else localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens));
 }
 
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-  auth = false,
-): Promise<T> {
-  const headers = new Headers(options.headers || {});
+function errorMessage(data: unknown): string {
+  const detail = (data as { detail?: unknown })?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) return detail.map((d) => d.msg || "Invalid").join(", ");
+  return "Request failed";
+}
+
+export async function apiFetch<T>(path: string, options: RequestInit = {}, auth = false): Promise<T> {
+  const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
+
   if (auth) {
-    const tokens = getStoredTokens();
-    if (!tokens?.access_token) {
-      throw new Error("Not authenticated");
-    }
-    headers.set("Authorization", `Bearer ${tokens.access_token}`);
+    const access = readTokens()?.access_token;
+    if (!access) throw new Error("Not authenticated");
+    headers.set("Authorization", `Bearer ${access}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const data = response.status === 204 ? null : await response.json().catch(() => null);
 
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const detail = data?.detail;
-    const message =
-      typeof detail === "string"
-        ? detail
-        : Array.isArray(detail)
-          ? detail.map((d: { msg?: string }) => d.msg).join(", ")
-          : "Request failed";
-    throw new Error(message);
-  }
-
+  if (!response.ok) throw new Error(errorMessage(data));
   return data as T;
 }
 
-export async function registerUser(payload: {
-  email: string;
-  password: string;
-  full_name: string;
-}) {
-  return apiFetch<{
-    message: string;
-    user_id: string;
-    email: string;
-    verification_token?: string;
-    email_delivery: string;
-  }>("/auth/register", {
+export const registerUser = (body: { email: string; password: string; full_name: string }) =>
+  apiFetch<{ verification_token?: string }>("/auth/register", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
-}
 
-export async function loginUser(payload: { email: string; password: string }) {
+export async function loginUser(body: { email: string; password: string }) {
   const tokens = await apiFetch<TokenPair>("/auth/login", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
   storeTokens(tokens);
   return tokens;
 }
 
 export async function logoutUser() {
-  const tokens = getStoredTokens();
-  if (tokens?.refresh_token && tokens.access_token) {
+  const tokens = readTokens();
+  if (tokens?.refresh_token) {
     try {
       await apiFetch("/auth/logout", {
         method: "POST",
         body: JSON.stringify({ refresh_token: tokens.refresh_token }),
       }, true);
     } catch {
-      // still clear local session
+      /* always clear local session */
     }
   }
   storeTokens(null);
 }
 
-export async function fetchMe() {
-  return apiFetch<UserMe>("/users/me", {}, true);
-}
+export const fetchMe = () => apiFetch<UserMe>("/users/me", {}, true);
 
-export async function verifyEmail(token: string) {
-  return apiFetch<{ message: string }>("/auth/verify-email", {
+export const verifyEmail = (token: string) =>
+  apiFetch<{ message: string }>("/auth/verify-email", {
     method: "POST",
     body: JSON.stringify({ token }),
   });
-}
-
-export async function healthCheck() {
-  return apiFetch<{ status: string }>("/health");
-}

@@ -76,6 +76,7 @@ docker-compose.prod.yml  Production
 
 | Doc | Path |
 |-----|------|
+| **Code map (start here)** | `docs/CODEBASE.md` |
 | Progress | `docs/PROGRESS.md` |
 | Deployment | `docs/DEPLOYMENT.md` |
 | Security | `docs/SECURITY_THREAT_MODEL.md` |

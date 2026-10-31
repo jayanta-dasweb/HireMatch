@@ -13,21 +13,16 @@ Wait until API is healthy, then open:
 - App: http://localhost:3000  
 - Sign in: http://localhost:3000/sign-in  
 
-## Admin login (full platform access)
+## Sign in (same page for everyone)
 
-| Field | Value |
-|-------|--------|
-| Email | `admin@hirematch.ai` |
-| Password | `Admin@123` |
+Open http://localhost:3000/sign-in and use email + password.
 
-Or click **Fill platform admin login** on the sign-in page, then open **Platform Admin** in the sidebar.
+| Role | Email | Password |
+|------|--------|----------|
+| Platform admin | `admin@hirematch.ai` | `Admin@123` |
+| Demo user | `demo@hirematch.ai` | `DemoPass123!` |
 
-## Optional demo user
-
-| Field | Value |
-|-------|--------|
-| Email | `demo@hirematch.ai` |
-| Password | `DemoPass123!` |
+After admin login, open **Platform Admin** in the sidebar.
 
 ## What to show
 

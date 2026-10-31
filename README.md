@@ -54,11 +54,11 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
 
 Then open http://localhost:3000/sign-in
 
-**Platform admin (full access)**
-- Email: `admin@hirematch.ai`
-- Password: `Admin@123`
+Sign in at http://localhost:3000/sign-in (same form for all roles).
 
-See `docs/INVESTOR_DEMO.md`.
+- Platform admin: `admin@hirematch.ai` / `Admin@123`
+- See `docs/INVESTOR_DEMO.md`
+
 
 
 ## Production deploy (single host)

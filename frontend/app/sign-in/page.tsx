@@ -9,23 +9,21 @@ import { ButtonLoader, FullPageLoader } from "@/components/Loading";
 import { loginUser } from "@/lib/api";
 import { clearUserCache } from "@/lib/useCurrentUser";
 
-const ADMIN_EMAIL = "admin@hirematch.ai";
-const ADMIN_PASSWORD = "Admin@123";
-
 export default function SignInPage() {
   const router = useRouter();
-  const [email, setEmail] = useState(ADMIN_EMAIL);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [booting, setBooting] = useState(false);
 
-  async function signIn(nextEmail: string, nextPassword: string) {
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
     setLoading(true);
     setError(null);
     try {
       clearUserCache();
-      await loginUser({ email: nextEmail, password: nextPassword });
+      await loginUser({ email, password });
       setBooting(true);
       router.push("/dashboard");
     } catch (err) {
@@ -34,58 +32,43 @@ export default function SignInPage() {
     }
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    await signIn(email, password);
-  }
-
   if (booting) {
-    return <FullPageLoader label="Opening admin console…" />;
+    return <FullPageLoader label="Opening your workspace…" />;
   }
 
   return (
     <PageShell>
       <SiteHeader />
-      <AuthCard title="Admin sign in" subtitle="Use the platform admin account to manage HireMatch.">
+      <AuthCard title="Sign in" subtitle="Sign in with your HireMatch account.">
         <form onSubmit={onSubmit} className="space-y-4">
-          <Field label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Field
+            label="Email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
           <Field
             label="Password"
             type="password"
             required
             minLength={8}
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
           <ErrorText message={error} />
           <PrimaryButton type="submit" disabled={loading} className="inline-flex gap-2">
             {loading && <ButtonLoader />}
-            {loading ? "Signing in…" : "Sign in as admin"}
+            {loading ? "Signing in…" : "Sign in"}
           </PrimaryButton>
         </form>
 
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => {
-            setEmail(ADMIN_EMAIL);
-            setPassword(ADMIN_PASSWORD);
-            void signIn(ADMIN_EMAIL, ADMIN_PASSWORD);
-          }}
-          className="btn-ghost w-full"
-        >
-          Fill platform admin login
-        </button>
-
-        <p className="rounded-xl bg-surface-muted p-3 text-center text-xs text-ink-500">
-          Admin: <span className="font-semibold text-ink-700">{ADMIN_EMAIL}</span> /{" "}
-          <span className="font-semibold text-ink-700">{ADMIN_PASSWORD}</span>
-        </p>
-
         <p className="text-center text-sm text-ink-500">
-          Need a normal account?{" "}
+          No account?{" "}
           <Link href="/register" className="font-semibold text-brand-700">
-            Register
+            Create one
           </Link>
         </p>
       </AuthCard>

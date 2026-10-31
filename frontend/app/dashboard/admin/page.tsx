@@ -96,10 +96,8 @@ export default function PlatformAdminPage() {
       isPlatformAdmin
     >
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-ink-950">Platform control</h1>
-        <p className="mt-1 text-sm text-ink-500">
-          Full admin access for users, organizations, and system health.
-        </p>
+        <h1 className="font-display text-2xl font-bold text-ink-950">Platform Admin</h1>
+        <p className="mt-1 text-sm text-ink-500">Users, organizations, and system status.</p>
       </div>
 
       {error && <p className="mb-4 text-sm font-medium text-rose-600">{error}</p>}

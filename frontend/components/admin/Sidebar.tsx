@@ -92,12 +92,8 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="border-t border-white/10 p-4">
-          <div className="rounded-2xl bg-white/5 p-3 text-xs text-white/60">
-            {isPlatformAdmin
-              ? "You have platform-wide access to users, orgs, and system health."
-              : "Phase 1 foundation is live. Resume AI unlocks in Phase 2."}
-          </div>
+        <div className="border-t border-white/10 px-5 py-4">
+          <p className="text-xs text-white/40">HireMatch</p>
         </div>
       </aside>
     </>

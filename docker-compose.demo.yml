@@ -2,7 +2,7 @@
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
 #
-# Why faster: web runs production Next.js build (no slow Windows bind-mount + next dev compile).
+# Why faster: web runs production Next.js build (no Windows source bind-mount).
 
 services:
   api:
@@ -19,4 +19,5 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
-    volumes: []
+    # Clear dev bind-mounts from base compose so standalone server.js is used
+    volumes: !reset []

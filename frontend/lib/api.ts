@@ -138,16 +138,7 @@ export const verifyEmail = (token: string) =>
     body: JSON.stringify({ token }),
   });
 
-/** Re-export admin helpers so older imports keep working. Prefer `@/lib/adminApi`. */
-export {
-  adminCreateUser,
-  adminFetchAudit,
-  adminFetchHealth,
-  adminFetchOrgs,
-  adminFetchUsers,
-  adminResetPassword,
-  adminSetOrgActive,
-  adminSetUserActive,
-  adminUpdateUser,
-} from "@/lib/adminApi";
-export type { AdminHealth, AdminOrg, AdminUser, AuditLog } from "@/lib/adminApi";
+/** True when a local access token exists (may still be expired). */
+export function hasAccessToken(): boolean {
+  return !!readTokens()?.access_token;
+}

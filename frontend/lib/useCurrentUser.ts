@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchMe, UserMe } from "@/lib/api";
+import { fetchMe, hasAccessToken, storeTokens, UserMe } from "@/lib/api";
 
 let cachedUser: UserMe | null = null;
 
@@ -29,6 +29,13 @@ export function useCurrentUser() {
       return;
     }
 
+    if (!hasAccessToken()) {
+      setLoading(false);
+      setError("Please sign in again.");
+      router.replace("/sign-in");
+      return;
+    }
+
     fetchMe()
       .then((me) => {
         if (!alive) return;
@@ -38,6 +45,7 @@ export function useCurrentUser() {
       })
       .catch(() => {
         if (!alive) return;
+        storeTokens(null);
         clearUserCache();
         setError("Please sign in again.");
         setLoading(false);

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
-import { AuthCard, ErrorText, Field, PageShell, PrimaryButton } from "@/components/ui";
+import { AuthCard, Field, PageShell, PrimaryButton } from "@/components/ui";
 import { ButtonLoader, FullPageLoader } from "@/components/Loading";
 import { useAlert } from "@/components/AlertModal";
 import { loginUser } from "@/lib/api";
@@ -16,26 +16,26 @@ export default function SignInPage() {
   const alert = useAlert();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [booting, setBooting] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
+    setFieldError(false);
 
     if (!isValidEmailFormat(email)) {
       const msg =
         email.toLowerCase().includes(".local")
           ? "Emails ending in .local are not allowed. Use admin@hirematch.ai"
           : "Please enter a valid email address (example: name@company.com)";
-      setError(msg);
+      setFieldError(true);
       alert.error(msg, "Invalid email");
       return;
     }
     if (password.length < 8) {
       const msg = "Password must be at least 8 characters.";
-      setError(msg);
+      setFieldError(true);
       alert.warning(msg, "Invalid password");
       return;
     }
@@ -49,7 +49,7 @@ export default function SignInPage() {
       router.push("/dashboard");
     } catch (err) {
       const msg = friendlyErrorMessage(err, "Sign in failed");
-      setError(msg);
+      setFieldError(true);
       alert.error(msg, "Sign in failed");
       setLoading(false);
     }
@@ -70,9 +70,12 @@ export default function SignInPage() {
             required
             autoComplete="email"
             placeholder="admin@hirematch.ai"
-            error={Boolean(error)}
+            error={fieldError}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setFieldError(false);
+              setEmail(e.target.value);
+            }}
           />
           <Field
             label="Password"
@@ -80,11 +83,13 @@ export default function SignInPage() {
             required
             minLength={8}
             autoComplete="current-password"
-            error={Boolean(error)}
+            error={fieldError}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setFieldError(false);
+              setPassword(e.target.value);
+            }}
           />
-          <ErrorText message={error} />
           <PrimaryButton type="submit" disabled={loading} className="inline-flex gap-2">
             {loading && <ButtonLoader />}
             {loading ? "Signing in…" : "Sign in"}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
-import { AuthCard, ErrorText, Field, PageShell, PrimaryButton } from "@/components/ui";
+import { AuthCard, Field, PageShell, PrimaryButton } from "@/components/ui";
 import { ButtonLoader, FullPageLoader } from "@/components/Loading";
 import { useAlert } from "@/components/AlertModal";
 import { loginUser, registerUser } from "@/lib/api";
@@ -17,17 +17,17 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [booting, setBooting] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
+    setFieldError(false);
 
     if (!fullName.trim()) {
       const msg = "Please enter your full name.";
-      setError(msg);
+      setFieldError(true);
       alert.warning(msg);
       return;
     }
@@ -35,13 +35,13 @@ export default function RegisterPage() {
       const msg = email.toLowerCase().includes(".local")
         ? "Emails ending in .local are not allowed. Use a normal domain like company.com"
         : "Please enter a valid email address (example: name@company.com)";
-      setError(msg);
+      setFieldError(true);
       alert.error(msg, "Invalid email");
       return;
     }
     if (password.length < 8) {
       const msg = "Password must be at least 8 characters.";
-      setError(msg);
+      setFieldError(true);
       alert.warning(msg, "Invalid password");
       return;
     }
@@ -56,7 +56,7 @@ export default function RegisterPage() {
       router.push("/dashboard");
     } catch (err) {
       const msg = friendlyErrorMessage(err, "Registration failed");
-      setError(msg);
+      setFieldError(true);
       alert.error(msg, "Could not create account");
     } finally {
       setLoading(false);
@@ -72,26 +72,40 @@ export default function RegisterPage() {
       <SiteHeader />
       <AuthCard title="Create account" subtitle="Create your HireMatch workspace.">
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <Field label="Full name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <Field
+            label="Full name"
+            required
+            error={fieldError}
+            value={fullName}
+            onChange={(e) => {
+              setFieldError(false);
+              setFullName(e.target.value);
+            }}
+          />
           <Field
             label="Email"
             type="email"
             required
             placeholder="name@company.com"
-            error={Boolean(error)}
+            error={fieldError}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setFieldError(false);
+              setEmail(e.target.value);
+            }}
           />
           <Field
             label="Password"
             type="password"
             required
             minLength={8}
-            error={Boolean(error)}
+            error={fieldError}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setFieldError(false);
+              setPassword(e.target.value);
+            }}
           />
-          <ErrorText message={error} />
           <PrimaryButton type="submit" disabled={loading} className="inline-flex gap-2">
             {loading && <ButtonLoader />}
             {loading ? "Creating…" : "Create account"}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Manrope } from "next/font/google";
+import { ToastProvider } from "@/components/Toast";
 import "./globals.css";
 
 const sans = Plus_Jakarta_Sans({
@@ -13,7 +14,7 @@ const display = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "HireMatch AI",
+  title: "HireMatch",
   description:
     "AI-powered resume intelligence, semantic job matching, and recruitment SaaS.",
 };
@@ -26,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${sans.variable} ${display.variable} font-sans antialiased`}>
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

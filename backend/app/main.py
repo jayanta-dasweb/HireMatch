@@ -3,6 +3,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -70,6 +71,28 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
+
+    @app.exception_handler(RequestValidationError)
+    async def on_validation_error(_: Request, exc: RequestValidationError):
+        messages: list[str] = []
+        for err in exc.errors():
+            loc = err.get("loc") or ()
+            field = str(loc[-1]) if loc else "field"
+            msg = str(err.get("msg") or "Invalid value")
+            lower = msg.lower()
+            if field == "email" or "email" in lower:
+                if "special-use" in lower or "reserved" in lower:
+                    messages.append(
+                        "That email domain can’t be used. Try a normal address like name@company.com"
+                    )
+                else:
+                    messages.append("Please enter a valid email address (example: name@company.com)")
+            elif field == "password":
+                messages.append("Password must be at least 8 characters")
+            else:
+                messages.append(msg.replace("Value error, ", ""))
+        detail = messages[0] if len(messages) == 1 else messages
+        return JSONResponse(status_code=422, content={"detail": detail})
 
     @app.exception_handler(Exception)
     async def on_error(request: Request, exc: Exception):

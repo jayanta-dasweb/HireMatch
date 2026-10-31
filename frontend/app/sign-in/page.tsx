@@ -6,11 +6,14 @@ import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { AuthCard, ErrorText, Field, PageShell, PrimaryButton } from "@/components/ui";
 import { ButtonLoader, FullPageLoader } from "@/components/Loading";
+import { useToast } from "@/components/Toast";
 import { loginUser } from "@/lib/api";
+import { friendlyErrorMessage, isValidEmailFormat } from "@/lib/errors";
 import { clearUserCache } from "@/lib/useCurrentUser";
 
 export default function SignInPage() {
   const router = useRouter();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,15 +22,32 @@ export default function SignInPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    if (!isValidEmailFormat(email)) {
+      const msg = "Please enter a valid email address (example: name@company.com)";
+      setError(msg);
+      toast.warning(msg, "Invalid email");
+      return;
+    }
+    if (password.length < 8) {
+      const msg = "Password must be at least 8 characters.";
+      setError(msg);
+      toast.warning(msg, "Invalid password");
+      return;
+    }
+
+    setLoading(true);
     try {
       clearUserCache();
-      await loginUser({ email, password });
+      await loginUser({ email: email.trim(), password });
+      toast.success("Welcome back.", "Signed in");
       setBooting(true);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed");
+      const msg = friendlyErrorMessage(err, "Sign in failed");
+      setError(msg);
+      toast.error(msg, "Sign in failed");
       setLoading(false);
     }
   }
@@ -40,12 +60,13 @@ export default function SignInPage() {
     <PageShell>
       <SiteHeader />
       <AuthCard title="Sign in" subtitle="Sign in with your HireMatch account.">
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <Field
             label="Email"
             type="email"
             required
             autoComplete="email"
+            placeholder="name@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />

@@ -46,7 +46,17 @@ export function storeTokens(tokens: TokenPair | null) {
 function errorMessage(data: unknown): string {
   const detail = (data as { detail?: unknown })?.detail;
   if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((d) => d.msg || "Invalid").join(", ");
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d: { msg?: string; loc?: unknown[] }) => {
+        const field = Array.isArray(d.loc) ? String(d.loc[d.loc.length - 1] || "") : "";
+        const msg = d.msg || "Invalid value";
+        if (field === "email") return msg;
+        if (field === "password") return msg;
+        return msg;
+      })
+      .join(" ");
+  }
   return "Request failed";
 }
 

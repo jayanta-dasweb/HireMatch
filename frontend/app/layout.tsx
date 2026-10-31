@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "HireMatch",
   description:
     "AI-powered resume intelligence, semantic job matching, and recruitment SaaS.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

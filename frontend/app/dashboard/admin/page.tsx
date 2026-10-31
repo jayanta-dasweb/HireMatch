@@ -132,6 +132,8 @@ export default function PlatformAdminPage() {
   }
 
   async function loadAccessCatalog(orgId: string | null) {
+    // Keep page_size well under API max (200). Do not send 200 — older cached bundles broke on le=100.
+    const catalogPageSize = 50;
     try {
       const [r, p] = await Promise.all([
         fetchRoles({
@@ -139,9 +141,9 @@ export default function PlatformAdminPage() {
           include_system: true,
           is_active: true,
           page: 1,
-          page_size: 50,
+          page_size: catalogPageSize,
         }),
-        fetchPermissions({ is_active: true, page: 1, page_size: 50 }),
+        fetchPermissions({ is_active: true, page: 1, page_size: catalogPageSize }),
       ]);
       setRoles(r.items);
       setAllPerms(p.items);

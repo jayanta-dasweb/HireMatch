@@ -62,7 +62,43 @@ function errorMessage(data: unknown): string {
   return "Request failed";
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}, auth = false): Promise<T> {
+let refreshInFlight: Promise<boolean> | null = null;
+
+/** Exchange refresh token for a new pair. Returns false if session is dead. */
+export async function refreshSession(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const refresh = readTokens()?.refresh_token;
+    if (!refresh) return false;
+    try {
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refresh }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        storeTokens(null);
+        return false;
+      }
+      storeTokens(data as TokenPair);
+      return true;
+    } catch {
+      storeTokens(null);
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {},
+  auth = false,
+  _retried = false,
+): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
 
@@ -74,6 +110,13 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, auth 
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
   const data = response.status === 204 ? null : await response.json().catch(() => null);
+
+  if (response.status === 401 && auth && !_retried) {
+    const ok = await refreshSession();
+    if (ok) return apiFetch<T>(path, options, auth, true);
+    storeTokens(null);
+    throw new Error("Not authenticated");
+  }
 
   if (!response.ok) throw new Error(errorMessage(data));
   return data as T;
@@ -98,10 +141,14 @@ export async function logoutUser() {
   const tokens = readTokens();
   if (tokens?.refresh_token) {
     try {
-      await apiFetch("/auth/logout", {
-        method: "POST",
-        body: JSON.stringify({ refresh_token: tokens.refresh_token }),
-      }, true);
+      await apiFetch(
+        "/auth/logout",
+        {
+          method: "POST",
+          body: JSON.stringify({ refresh_token: tokens.refresh_token }),
+        },
+        true,
+      );
     } catch {
       /* always clear local session */
     }
@@ -109,7 +156,17 @@ export async function logoutUser() {
   storeTokens(null);
 }
 
-export const fetchMe = () => apiFetch<UserMe>("/users/me", {}, true);
+let meInFlight: Promise<UserMe> | null = null;
+
+/** Deduped /users/me — layout + pages share one request. */
+export function fetchMe(): Promise<UserMe> {
+  if (!meInFlight) {
+    meInFlight = apiFetch<UserMe>("/users/me", {}, true).finally(() => {
+      meInFlight = null;
+    });
+  }
+  return meInFlight;
+}
 
 export type OrganizationOut = {
   id: string;
@@ -141,4 +198,8 @@ export const verifyEmail = (token: string) =>
 /** True when a local access token exists (may still be expired). */
 export function hasAccessToken(): boolean {
   return !!readTokens()?.access_token;
+}
+
+export function hasRefreshToken(): boolean {
+  return !!readTokens()?.refresh_token;
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchMe, hasAccessToken, storeTokens, UserMe } from "@/lib/api";
+import { fetchMe, hasAccessToken, hasRefreshToken, storeTokens, UserMe } from "@/lib/api";
 
 let cachedUser: UserMe | null = null;
 
@@ -29,7 +29,8 @@ export function useCurrentUser() {
       return;
     }
 
-    if (!hasAccessToken()) {
+    // No session at all — go sign in without hitting the API.
+    if (!hasAccessToken() && !hasRefreshToken()) {
       setLoading(false);
       setError("Please sign in again.");
       router.replace("/sign-in");
@@ -57,5 +58,13 @@ export function useCurrentUser() {
     };
   }, [router]);
 
-  return { user, loading, error, setUser: (u: UserMe) => { cachedUser = u; setUser(u); } };
+  return {
+    user,
+    loading,
+    error,
+    setUser: (u: UserMe) => {
+      cachedUser = u;
+      setUser(u);
+    },
+  };
 }

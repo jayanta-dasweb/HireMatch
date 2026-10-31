@@ -207,7 +207,7 @@ def create_role(
         )
     else:
         rbac_svc.require_permission(
-            db, user=user, organization_id=payload.organization_id, code="org.roles.manage"
+            db, user=user, organization_id=payload.organization_id, code="org.roles.create"
         )
         role = rbac_svc.create_role(
             db,
@@ -246,7 +246,7 @@ def update_role(
         allow_system = True
     else:
         rbac_svc.require_permission(
-            db, user=user, organization_id=existing.organization_id, code="org.roles.manage"
+            db, user=user, organization_id=existing.organization_id, code="org.roles.edit"
         )
 
     role = rbac_svc.update_role(

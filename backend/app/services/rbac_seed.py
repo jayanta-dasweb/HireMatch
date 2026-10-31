@@ -1,4 +1,4 @@
-"""Seed permission groups, permission catalog + system roles (idempotent)."""
+"""Seed permission groups, granular CRUD catalog + system roles (idempotent)."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -6,42 +6,132 @@ from sqlalchemy.orm import Session
 from app.models import Permission, PermissionGroup, Role, RolePermission
 
 GROUPS = [
-    ("organization", "Organization", "Org basics"),
+    ("organization", "Organization", "Org profile & workspace"),
     ("members", "Members", "People in a workspace"),
     ("roles", "Roles", "Org role management"),
     ("settings", "Settings", "Workspace settings"),
+    ("jobs", "Jobs", "Job postings (Phase 2)"),
+    ("resumes", "Resumes", "Resume library (Phase 2)"),
     ("general", "General", "Uncategorized"),
 ]
 
+# Fine-grained codes — UI and API gate on view / create / edit / delete.
 PERMISSIONS = [
-    ("org.view", "View organization", "organization", "View org basics"),
+    # Organization
+    ("org.view", "View organization", "organization", "See org name and workspace basics"),
+    ("org.edit", "Edit organization", "organization", "Update org profile / branding"),
+    # Members
     ("org.members.view", "View members", "members", "List organization members"),
-    ("org.members.invite", "Invite members", "members", "Send invitations"),
-    ("org.members.manage", "Manage members", "members", "Change member roles / remove"),
-    ("org.roles.manage", "Manage roles", "roles", "Create org roles and assign permissions"),
-    ("org.settings.manage", "Manage settings", "settings", "Update organization settings"),
+    ("org.members.create", "Invite members", "members", "Send invitations (create membership)"),
+    ("org.members.edit", "Edit members", "members", "Change a member's role"),
+    ("org.members.delete", "Remove members", "members", "Remove someone from the organization"),
+    # Roles
+    ("org.roles.view", "View roles", "roles", "See roles and permission matrix"),
+    ("org.roles.create", "Create roles", "roles", "Create custom organization roles"),
+    ("org.roles.edit", "Edit roles", "roles", "Change role name/permissions/active"),
+    ("org.roles.delete", "Delete roles", "roles", "Deactivate or remove custom roles"),
+    # Settings
+    ("org.settings.view", "View settings", "settings", "See workspace settings"),
+    ("org.settings.edit", "Edit settings", "settings", "Update workspace settings"),
+    # Jobs (Phase 2 UI will hide/show from these)
+    ("jobs.view", "View jobs", "jobs", "List and open job postings"),
+    ("jobs.create", "Create jobs", "jobs", "Create job postings"),
+    ("jobs.edit", "Edit jobs", "jobs", "Update job postings"),
+    ("jobs.delete", "Delete jobs", "jobs", "Archive or delete jobs"),
+    # Resumes (Phase 2)
+    ("resumes.view", "View resumes", "resumes", "Browse resume library"),
+    ("resumes.create", "Upload resumes", "resumes", "Add resumes"),
+    ("resumes.edit", "Edit resumes", "resumes", "Update resume metadata"),
+    ("resumes.delete", "Delete resumes", "resumes", "Remove resumes"),
 ]
 
+# Legacy codes kept so old role matrices / special grants keep working.
+LEGACY_PERMISSIONS = [
+    ("org.members.invite", "Invite members (legacy)", "members", "Alias of org.members.create"),
+    ("org.members.manage", "Manage members (legacy)", "members", "Alias of edit+delete members"),
+    ("org.roles.manage", "Manage roles (legacy)", "roles", "Alias of roles create/edit/delete"),
+    ("org.settings.manage", "Manage settings (legacy)", "settings", "Alias of org.settings.edit"),
+]
+
+# If someone still has a legacy code, treat these as also granted.
+PERMISSION_EXPAND: dict[str, tuple[str, ...]] = {
+    "org.members.invite": ("org.members.create",),
+    "org.members.manage": ("org.members.edit", "org.members.delete"),
+    "org.roles.manage": ("org.roles.view", "org.roles.create", "org.roles.edit", "org.roles.delete"),
+    "org.settings.manage": ("org.settings.view", "org.settings.edit"),
+}
+
 SYSTEM_ROLE_PERMS: dict[str, list[str]] = {
-    "candidate": ["org.view", "org.members.view"],
-    "recruiter": ["org.view", "org.members.view"],
-    "agency_manager": ["org.view", "org.members.view", "org.members.invite"],
-    "org_admin": [
+    "candidate": [
         "org.view",
         "org.members.view",
-        "org.members.invite",
-        "org.members.manage",
-        "org.roles.manage",
-        "org.settings.manage",
+        "jobs.view",
+        "resumes.view",
+        "resumes.create",
+    ],
+    "recruiter": [
+        "org.view",
+        "org.members.view",
+        "jobs.view",
+        "jobs.create",
+        "jobs.edit",
+        "resumes.view",
+        "resumes.create",
+        "resumes.edit",
+    ],
+    "agency_manager": [
+        "org.view",
+        "org.members.view",
+        "org.members.create",
+        "org.roles.view",
+        "jobs.view",
+        "jobs.create",
+        "jobs.edit",
+        "jobs.delete",
+        "resumes.view",
+        "resumes.create",
+        "resumes.edit",
+        "resumes.delete",
+    ],
+    "org_admin": [
+        "org.view",
+        "org.edit",
+        "org.members.view",
+        "org.members.create",
+        "org.members.edit",
+        "org.members.delete",
+        "org.roles.view",
+        "org.roles.create",
+        "org.roles.edit",
+        "org.roles.delete",
+        "org.settings.view",
+        "org.settings.edit",
+        "jobs.view",
+        "jobs.create",
+        "jobs.edit",
+        "jobs.delete",
+        "resumes.view",
+        "resumes.create",
+        "resumes.edit",
+        "resumes.delete",
     ],
 }
 
 SYSTEM_ROLE_META = {
     "candidate": ("Candidate", "Personal / candidate access"),
-    "recruiter": ("Recruiter", "Recruiter workspace access"),
-    "agency_manager": ("Agency manager", "Can invite members"),
+    "recruiter": ("Recruiter", "Jobs & resumes; view members"),
+    "agency_manager": ("Agency manager", "Invite members; manage jobs/resumes"),
     "org_admin": ("Organization admin", "Full organization control"),
 }
+
+
+def expand_permission_codes(codes: set[str]) -> set[str]:
+    """Expand legacy codes into granular CRUD codes for checks + UI."""
+    out = set(codes)
+    for code in list(codes):
+        for extra in PERMISSION_EXPAND.get(code, ()):
+            out.add(extra)
+    return out
 
 
 def seed_rbac_defaults(db: Session) -> None:
@@ -60,7 +150,7 @@ def seed_rbac_defaults(db: Session) -> None:
             group_by_slug[slug] = row
 
     perm_by_code: dict[str, Permission] = {}
-    for code, name, group_slug, description in PERMISSIONS:
+    for code, name, group_slug, description in [*PERMISSIONS, *LEGACY_PERMISSIONS]:
         grp = group_by_slug.get(group_slug) or group_by_slug["general"]
         existing = db.scalar(select(Permission).where(Permission.code == code))
         if existing:
@@ -68,6 +158,7 @@ def seed_rbac_defaults(db: Session) -> None:
             existing.group = grp.slug
             existing.group_id = grp.id
             existing.description = description
+            existing.is_active = True
             perm_by_code[code] = existing
         else:
             row = Permission(

@@ -72,6 +72,20 @@ Platform Admin (`/dashboard/admin` + `/api/v1/admin/*`) is the control plane for
 
 Auth checks use `require_permission(..., code)` — not hardcoded role lists. `users.is_platform_admin` bypasses org permission checks.
 
+### Granular permissions (UI + API)
+
+Codes are `resource.action`: **view / create / edit / delete** (plus org.edit, settings.edit).
+
+Examples: `org.members.create`, `org.members.edit`, `jobs.delete`, `resumes.view`.
+
+| Layer | Use |
+|-------|-----|
+| Seed / matrix | `services/rbac_seed.py` + Access Control UI |
+| API gate | `require_permission(..., code="org.members.create")` |
+| UI render | `can(membership, code)` or `useCan("jobs.create")` from `lib/permissions.ts` |
+
+Legacy aliases (`org.members.invite`, `*.manage`) still expand into the granular codes.
+
 ## Don’t
 
 - Don’t paste the same token/org create code in two files

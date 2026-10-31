@@ -7,9 +7,9 @@ import { DashboardSkeleton } from "@/components/Loading";
 import { useAlert } from "@/components/AlertModal";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { Field, PrimaryButton } from "@/components/ui";
-import { Membership } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
 import { useOrg } from "@/lib/orgContext";
+import { can } from "@/lib/permissions";
 import { clearUserCache, useCurrentUser } from "@/lib/useCurrentUser";
 import {
   OrgMember,
@@ -23,11 +23,6 @@ import {
   inviteOrgMember,
   updateRole,
 } from "@/lib/rbacApi";
-
-function can(m: Membership | undefined, code: string) {
-  if (!m) return false;
-  return (m.permissions || []).includes(code);
-}
 
 export default function TeamPage() {
   const alert = useAlert();
@@ -65,7 +60,14 @@ export default function TeamPage() {
     ]);
     setMembers(m);
     setRoles(r.items);
-    if (can(user?.memberships.find((x) => x.organization_id === targetOrg), "org.roles.manage") || user?.is_platform_admin) {
+    if (
+      can(user?.memberships.find((x) => x.organization_id === targetOrg), "org.roles.view", {
+        isPlatformAdmin: user?.is_platform_admin,
+      }) ||
+      can(user?.memberships.find((x) => x.organization_id === targetOrg), "org.roles.edit", {
+        isPlatformAdmin: user?.is_platform_admin,
+      })
+    ) {
       try {
         const perms = await fetchPermissions({ is_active: true, page: 1, page_size: 100 });
         setPermissions(perms.items);
@@ -156,9 +158,12 @@ export default function TeamPage() {
 
   if (loading || !user) return <DashboardSkeleton />;
 
-  const canInvite = user.is_platform_admin || can(membership, "org.members.invite");
-  const canManageMembers = user.is_platform_admin || can(membership, "org.members.manage");
-  const canManageRoles = user.is_platform_admin || can(membership, "org.roles.manage");
+  const adminOpts = { isPlatformAdmin: user.is_platform_admin };
+  const canInvite = can(membership, "org.members.create", adminOpts);
+  const canEditMembers = can(membership, "org.members.edit", adminOpts);
+  const canCreateRoles = can(membership, "org.roles.create", adminOpts);
+  const canEditRoles = can(membership, "org.roles.edit", adminOpts);
+  const canManageRoles = canCreateRoles || canEditRoles;
 
   return (
     <AdminShell
@@ -206,7 +211,7 @@ export default function TeamPage() {
                       <p className="text-xs text-ink-500">{m.email}</p>
                     </td>
                     <td className="px-2 py-3">
-                      {canManageMembers ? (
+                      {canEditMembers ? (
                         <SearchableSelect
                           className="min-w-[160px]"
                           value={m.role}
@@ -264,13 +269,15 @@ export default function TeamPage() {
 
           {canManageRoles && (
             <Panel title="Organization roles">
-              <form onSubmit={onCreateOrgRole} className="mb-4 space-y-2 border-b border-ink-100 pb-4">
-                <Field label="Slug" required value={customSlug} onChange={(e) => setCustomSlug(e.target.value)} />
-                <Field label="Name" required value={customName} onChange={(e) => setCustomName(e.target.value)} />
-                <PrimaryButton type="submit" disabled={busy} className="w-full">
-                  Create org role
-                </PrimaryButton>
-              </form>
+              {canCreateRoles && (
+                <form onSubmit={onCreateOrgRole} className="mb-4 space-y-2 border-b border-ink-100 pb-4">
+                  <Field label="Slug" required value={customSlug} onChange={(e) => setCustomSlug(e.target.value)} />
+                  <Field label="Name" required value={customName} onChange={(e) => setCustomName(e.target.value)} />
+                  <PrimaryButton type="submit" disabled={busy} className="w-full">
+                    Create org role
+                  </PrimaryButton>
+                </form>
+              )}
               <ul className="mb-3 space-y-2">
                 {orgRoles.map((r) => (
                   <li key={r.id}>
@@ -290,7 +297,7 @@ export default function TeamPage() {
                   <p className="text-sm text-ink-400">No custom roles yet. System roles still apply.</p>
                 )}
               </ul>
-              {editRole && (
+              {editRole && canEditRoles && (
                 <div className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-ink-100 p-2">
                   <p className="mb-2 text-xs font-semibold uppercase text-ink-400">Permissions — {editRole.name}</p>
                   {permissions.map((p) => (

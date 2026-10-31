@@ -96,16 +96,25 @@ def permission_codes_for_role(db: Session, role_id: UUID) -> set[str]:
 
 
 def user_permissions(db: Session, *, user: User, organization_id: UUID) -> set[str]:
+    from app.services.rbac_seed import expand_permission_codes
+
     if user.is_platform_admin:
-        return {
+        codes = {
             p.code for p in db.scalars(select(Permission).where(Permission.is_active.is_(True))).all()
-        } or {
+        }
+        return expand_permission_codes(codes) if codes else {
             "org.view",
+            "org.edit",
             "org.members.view",
-            "org.members.invite",
-            "org.members.manage",
-            "org.roles.manage",
-            "org.settings.manage",
+            "org.members.create",
+            "org.members.edit",
+            "org.members.delete",
+            "org.roles.view",
+            "org.roles.create",
+            "org.roles.edit",
+            "org.roles.delete",
+            "org.settings.view",
+            "org.settings.edit",
         }
 
     membership = db.scalar(
@@ -136,7 +145,7 @@ def user_permissions(db: Session, *, user: User, organization_id: UUID) -> set[s
             )
         ).all()
     )
-    return role_codes | special
+    return expand_permission_codes(role_codes | special)
 
 
 def list_user_special_permissions(db: Session, *, user_id: UUID, organization_id: UUID) -> list[str]:
@@ -771,7 +780,7 @@ def assign_member_role(
     role_id: UUID | None = None,
     role_slug: str | None = None,
 ) -> OrganizationMember:
-    require_permission(db, user=actor, organization_id=organization_id, code="org.members.manage")
+    require_permission(db, user=actor, organization_id=organization_id, code="org.members.edit")
     membership = db.scalar(
         select(OrganizationMember)
         .options(joinedload(OrganizationMember.user).joinedload(User.profile), joinedload(OrganizationMember.rbac_role))

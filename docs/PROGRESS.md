@@ -16,6 +16,7 @@
 - [x] RBAC masters scale UI: search/filter/pagination, active/inactive, who/when audit trail
 - [x] Users master: assign org role + special/direct permissions per membership (union into effective access)
 - [x] Multi-tenant UX: active org switcher, create organization, accept-invite page (one user ↔ many orgs)
+- [x] Granular CRUD permissions (`resource.action`) for org/members/roles/settings/jobs/resumes + `can` / `useCan` UI gates
 
 ### Production-ready setup
 - [x] Multi-stage Dockerfiles (dev + prod targets), non-root users

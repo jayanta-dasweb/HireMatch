@@ -46,7 +46,7 @@ def require_membership(db: Session, *, user_id: UUID, organization_id: UUID) -> 
 
 def require_org_manager(db: Session, *, user: User, organization_id: UUID) -> OrganizationMember:
     """Legacy helper — now permission-based."""
-    return require_permission(db, user=user, organization_id=organization_id, code="org.members.invite")
+    return require_permission(db, user=user, organization_id=organization_id, code="org.members.create")
 
 
 def create_organization(db: Session, *, user: User, name: str, slug: str | None) -> Organization:
@@ -119,7 +119,7 @@ def create_invitation(
     role_id: UUID | None = None,
     role_slug: str | None = None,
 ) -> tuple[OrganizationInvitation, str]:
-    require_permission(db, user=user, organization_id=organization_id, code="org.members.invite")
+    require_permission(db, user=user, organization_id=organization_id, code="org.members.create")
 
     org = db.get(Organization, organization_id)
     if not org or not org.is_active:

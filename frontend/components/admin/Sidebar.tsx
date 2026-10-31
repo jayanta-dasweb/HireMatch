@@ -11,6 +11,7 @@ import {
   IconShield,
   IconUsers,
 } from "@/components/admin/icons";
+import { useCan } from "@/lib/permissions";
 
 type NavItem = {
   href: string;
@@ -18,17 +19,53 @@ type NavItem = {
   icon: typeof IconHome;
   soon?: boolean;
   adminOnly?: boolean;
+  /** Hide unless user has this permission in the active org (platform admin always sees). */
+  permission?: string;
 };
 
 const links: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: IconHome },
-  { href: "/dashboard/resumes", label: "Resumes", icon: IconFile, soon: true },
-  { href: "/dashboard/jobs", label: "Jobs", icon: IconBriefcase, soon: true },
-  { href: "/dashboard/team", label: "Team", icon: IconUsers },
+  { href: "/dashboard/resumes", label: "Resumes", icon: IconFile, soon: true, permission: "resumes.view" },
+  { href: "/dashboard/jobs", label: "Jobs", icon: IconBriefcase, soon: true, permission: "jobs.view" },
+  { href: "/dashboard/team", label: "Team", icon: IconUsers, permission: "org.members.view" },
   { href: "/dashboard/admin", label: "Platform Admin", icon: IconShield, adminOnly: true },
   { href: "/dashboard/admin/rbac", label: "Access Control", icon: IconKey, adminOnly: true },
   { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
 ];
+
+function NavLink({
+  item,
+  active,
+  onClose,
+}: {
+  item: NavItem;
+  active: boolean;
+  onClose: () => void;
+}) {
+  const allowed = useCan(item.permission || "");
+  if (item.permission && !allowed && !item.soon) return null;
+
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.soon ? "/dashboard" : item.href}
+      onClick={onClose}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+        active
+          ? "bg-brand-600 text-white shadow-float"
+          : "text-[var(--sidebar-text)] hover:bg-white/5 hover:text-white"
+      }`}
+    >
+      <Icon className="h-5 w-5 shrink-0 opacity-90" />
+      <span className="flex-1">{item.label}</span>
+      {item.soon && (
+        <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white/60">
+          soon
+        </span>
+      )}
+    </Link>
+  );
+}
 
 export function Sidebar({
   open,
@@ -71,30 +108,9 @@ export function Sidebar({
           </p>
           {visible.map((item) => {
             const active = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.soon ? "/dashboard" : item.href}
-                onClick={onClose}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                  active
-                    ? "bg-brand-600 text-white shadow-float"
-                    : "text-[var(--sidebar-text)] hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                <Icon className="h-5 w-5 shrink-0 opacity-90" />
-                <span className="flex-1">{item.label}</span>
-                {item.soon && (
-                  <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white/60">
-                    soon
-                  </span>
-                )}
-              </Link>
-            );
+            return <NavLink key={item.href} item={item} active={active} onClose={onClose} />;
           })}
         </nav>
-
       </aside>
     </>
   );

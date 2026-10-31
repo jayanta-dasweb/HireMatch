@@ -56,6 +56,7 @@ def test_rbac_permission_grant_and_platform_bypass(client, unique_email):
     assert me.status_code == 200
     membership = me.json()["memberships"][0]
     assert "org.view" in membership["permissions"]
+    assert "org.members.create" not in membership["permissions"]
     assert "org.members.invite" not in membership["permissions"]
     org_id = membership["organization_id"]
 
@@ -87,7 +88,10 @@ def test_system_role_matrix_platform_only(client):
     body = roles.json()
     items = body["items"] if isinstance(body, dict) else body
     org_admin = next(r for r in items if r["slug"] == "org_admin")
-    assert "org.roles.manage" in org_admin["permissions"]
+    assert "org.roles.create" in org_admin["permissions"]
+    assert "org.roles.edit" in org_admin["permissions"]
+    assert "org.members.delete" in org_admin["permissions"]
+    assert "jobs.create" in org_admin["permissions"]
     assert "is_active" in org_admin
     assert "updated_at" in org_admin
 
@@ -121,7 +125,7 @@ def test_admin_assign_role_and_special_permissions(client, unique_email):
     membership = me.json()["memberships"][0]
     org_id = membership["organization_id"]
     user_id = me.json()["id"]
-    assert "org.members.invite" not in membership["permissions"]
+    assert "org.members.create" not in membership["permissions"]
 
     roles = client.get("/api/v1/rbac/roles?include_system=true", headers=admin_headers)
     assert roles.status_code == 200
@@ -137,21 +141,21 @@ def test_admin_assign_role_and_special_permissions(client, unique_email):
     assert mem["role"] == "recruiter"
     assert mem["role_id"] == recruiter["id"]
 
-    # Special permission on top of role
+    # Special permission on top of role (granular create)
     special = client.put(
         f"/api/v1/admin/users/{user_id}/organizations/{org_id}/special-permissions",
         headers=admin_headers,
-        json={"permission_codes": ["org.members.invite"]},
+        json={"permission_codes": ["org.members.create"]},
     )
     assert special.status_code == 200, special.text
     mem = next(m for m in special.json()["memberships"] if m["organization_id"] == org_id)
-    assert "org.members.invite" in mem["special_permissions"]
-    assert "org.members.invite" in mem["effective_permissions"]
+    assert "org.members.create" in mem["special_permissions"]
+    assert "org.members.create" in mem["effective_permissions"]
 
     me2 = client.get("/api/v1/users/me", headers=user_headers)
     assert me2.status_code == 200
     m2 = next(x for x in me2.json()["memberships"] if x["organization_id"] == org_id)
-    assert "org.members.invite" in m2["permissions"]
+    assert "org.members.create" in m2["permissions"]
 
     invite = client.post(
         f"/api/v1/organizations/{org_id}/invitations",

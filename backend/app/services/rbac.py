@@ -13,6 +13,7 @@ from app.models import (
     MemberRole,
     OrganizationMember,
     Permission,
+    PermissionGroup,
     Role,
     RolePermission,
     User,
@@ -154,6 +155,7 @@ def permission_to_dict(db: Session, row: Permission) -> dict:
         "code": row.code,
         "name": row.name,
         "group": row.group,
+        "group_id": row.group_id,
         "description": row.description,
         "is_active": row.is_active,
         "created_at": row.created_at,
@@ -161,6 +163,135 @@ def permission_to_dict(db: Session, row: Permission) -> dict:
         "created_by": _actor_out(db, row.created_by_user_id),
         "updated_by": _actor_out(db, row.updated_by_user_id),
     }
+
+
+def group_to_dict(db: Session, row: PermissionGroup) -> dict:
+    return {
+        "id": row.id,
+        "slug": row.slug,
+        "name": row.name,
+        "description": row.description,
+        "is_active": row.is_active,
+        "created_at": row.created_at,
+        "updated_at": row.updated_at,
+        "created_by": _actor_out(db, row.created_by_user_id),
+        "updated_by": _actor_out(db, row.updated_by_user_id),
+    }
+
+
+def _resolve_group(
+    db: Session,
+    *,
+    group_id: UUID | None = None,
+    group_slug: str | None = None,
+) -> PermissionGroup:
+    ensure_rbac_seeded(db)
+    group: PermissionGroup | None = None
+    if group_id:
+        group = db.get(PermissionGroup, group_id)
+    elif group_slug:
+        group = db.scalar(select(PermissionGroup).where(PermissionGroup.slug == group_slug.strip().lower()))
+    if not group:
+        group = db.scalar(select(PermissionGroup).where(PermissionGroup.slug == "general"))
+    if not group:
+        raise bad_request("Permission group not found. Create a group first.")
+    if not group.is_active:
+        raise bad_request("Permission group is inactive")
+    return group
+
+
+def list_permission_group_masters(
+    db: Session,
+    *,
+    q: str | None = None,
+    is_active: bool | None = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> tuple[list[PermissionGroup], dict]:
+    ensure_rbac_seeded(db)
+    page = max(1, page)
+    page_size = min(100, max(1, page_size))
+    stmt = select(PermissionGroup)
+    if q:
+        like = f"%{q.strip().lower()}%"
+        stmt = stmt.where(or_(func.lower(PermissionGroup.slug).like(like), func.lower(PermissionGroup.name).like(like)))
+    if is_active is not None:
+        stmt = stmt.where(PermissionGroup.is_active.is_(is_active))
+    total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    rows = list(
+        db.scalars(stmt.order_by(PermissionGroup.name).offset((page - 1) * page_size).limit(page_size)).all()
+    )
+    return rows, _page_meta(total, page, page_size)
+
+
+def create_permission_group(
+    db: Session,
+    *,
+    actor_id: UUID,
+    slug: str,
+    name: str,
+    description: str | None = None,
+    is_active: bool = True,
+) -> PermissionGroup:
+    slug = slug.strip().lower().replace(" ", "_")
+    if db.scalar(select(PermissionGroup).where(PermissionGroup.slug == slug)):
+        raise conflict("Group slug already exists")
+    row = PermissionGroup(
+        slug=slug,
+        name=name.strip(),
+        description=description,
+        is_active=is_active,
+        created_by_user_id=actor_id,
+        updated_by_user_id=actor_id,
+    )
+    db.add(row)
+    record_audit(
+        db,
+        action="rbac.permission_group_created",
+        actor_user_id=actor_id,
+        resource_type="permission_group",
+        resource_id=slug,
+    )
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def update_permission_group(
+    db: Session,
+    *,
+    actor_id: UUID,
+    group_id: UUID,
+    name: str | None = None,
+    description: str | None = None,
+    is_active: bool | None = None,
+) -> PermissionGroup:
+    row = db.get(PermissionGroup, group_id)
+    if not row:
+        raise not_found("Permission group not found")
+    changes: dict = {}
+    if name is not None:
+        row.name = name.strip()
+        changes["name"] = row.name
+    if description is not None:
+        row.description = description
+        changes["description"] = description
+    if is_active is not None and is_active != row.is_active:
+        row.is_active = is_active
+        changes["is_active"] = is_active
+    row.updated_by_user_id = actor_id
+    # Keep denormalized permission.group slug in sync when name changes only — slug is immutable
+    record_audit(
+        db,
+        action="rbac.permission_group_updated",
+        actor_user_id=actor_id,
+        resource_type="permission_group",
+        resource_id=str(row.id),
+        metadata=changes or {"touched": True},
+    )
+    db.commit()
+    db.refresh(row)
+    return row
 
 
 def list_permissions(
@@ -198,8 +329,15 @@ def list_permissions(
 
 
 def list_permission_groups(db: Session) -> list[str]:
+    """Active group slugs for dropdowns (legacy string list)."""
     ensure_rbac_seeded(db)
-    return list(db.scalars(select(Permission.group).distinct().order_by(Permission.group)).all())
+    return list(
+        db.scalars(
+            select(PermissionGroup.slug)
+            .where(PermissionGroup.is_active.is_(True))
+            .order_by(PermissionGroup.slug)
+        ).all()
+    )
 
 
 def create_permission(
@@ -209,16 +347,19 @@ def create_permission(
     code: str,
     name: str,
     group: str = "general",
+    group_id: UUID | None = None,
     description: str | None = None,
     is_active: bool = True,
 ) -> Permission:
     code = code.strip().lower()
     if db.scalar(select(Permission).where(Permission.code == code)):
         raise conflict("Permission code already exists")
+    grp = _resolve_group(db, group_id=group_id, group_slug=group)
     row = Permission(
         code=code,
         name=name.strip(),
-        group=group.strip() or "general",
+        group=grp.slug,
+        group_id=grp.id,
         description=description,
         is_active=is_active,
         created_by_user_id=actor_id,
@@ -245,6 +386,7 @@ def update_permission(
     permission_id: UUID,
     name: str | None = None,
     group: str | None = None,
+    group_id: UUID | None = None,
     description: str | None = None,
     is_active: bool | None = None,
 ) -> Permission:
@@ -255,9 +397,11 @@ def update_permission(
     if name is not None:
         row.name = name.strip()
         changes["name"] = row.name
-    if group is not None:
-        row.group = group.strip() or "general"
-        changes["group"] = row.group
+    if group is not None or group_id is not None:
+        grp = _resolve_group(db, group_id=group_id, group_slug=group)
+        row.group = grp.slug
+        row.group_id = grp.id
+        changes["group"] = grp.slug
     if description is not None:
         row.description = description
         changes["description"] = description

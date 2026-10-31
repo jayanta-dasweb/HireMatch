@@ -13,19 +13,23 @@ import {
   PageMeta,
   RbacAuditItem,
   RbacPermission,
+  RbacPermissionGroup,
   RbacRole,
   actorLabel,
+  createGroupMaster,
   createPermission,
   createRole,
+  fetchGroupMasters,
   fetchPermissionGroups,
   fetchPermissions,
   fetchRbacAudit,
   fetchRoles,
+  updateGroupMaster,
   updatePermission,
   updateRole,
 } from "@/lib/rbacApi";
 
-type Tab = "permissions" | "roles" | "audit";
+type Tab = "groups" | "permissions" | "roles" | "audit";
 
 function MetaLine({
   createdAt,
@@ -117,10 +121,24 @@ export default function AccessControlPage() {
   const [roleSlug, setRoleSlug] = useState("");
   const [roleName, setRoleName] = useState("");
 
+  const [groupMasters, setGroupMasters] = useState<RbacPermissionGroup[]>([]);
+  const [groupMeta, setGroupMeta] = useState<PageMeta | null>(null);
+  const [groupQ, setGroupQ] = useState("");
+  const [groupPage, setGroupPage] = useState(1);
+  const [groupSlug, setGroupSlug] = useState("");
+  const [groupName, setGroupName] = useState("");
+
   const selectedRole = useMemo(
     () => roles.find((r) => r.id === selectedRoleId) || null,
     [roles, selectedRoleId],
   );
+
+  async function loadGroups(page = groupPage) {
+    const res = await fetchGroupMasters({ q: groupQ || undefined, page, page_size: 50 });
+    setGroupMasters(res.items);
+    setGroupMeta(res.meta);
+    setGroupPage(res.meta.page);
+  }
 
   async function loadPermissions(page = permPage) {
     const res = await fetchPermissions({
@@ -175,10 +193,46 @@ export default function AccessControlPage() {
     fetchPermissionGroups()
       .then(setGroups)
       .catch(() => setGroups([]));
+    loadGroups(1).catch((err) => alert.error(friendlyErrorMessage(err)));
     loadPermissions(1).catch((err) => alert.error(friendlyErrorMessage(err)));
     loadRoles(1).catch((err) => alert.error(friendlyErrorMessage(err)));
     loadAudit(1).catch(() => undefined);
   }, [user, loading, router]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function onCreateGroup(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await createGroupMaster({ slug: groupSlug, name: groupName, is_active: true });
+      setGroupSlug("");
+      setGroupName("");
+      await loadGroups(1);
+      const slugs = await fetchPermissionGroups();
+      setGroups(slugs);
+      await loadAudit(1);
+      alert.success("Permission group created.", "Saved");
+    } catch (err) {
+      alert.error(friendlyErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleGroupActive(g: RbacPermissionGroup) {
+    setBusy(true);
+    try {
+      await updateGroupMaster(g.id, { is_active: !g.is_active });
+      await loadGroups(groupPage);
+      const slugs = await fetchPermissionGroups();
+      setGroups(slugs);
+      await loadAudit(1);
+      alert.success(g.is_active ? "Group deactivated." : "Group activated.", "Status");
+    } catch (err) {
+      alert.error(friendlyErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (tab === "roles" && selectedRoleId) {
@@ -271,6 +325,7 @@ export default function AccessControlPage() {
   if (!user.is_platform_admin) return <DashboardSkeleton />;
 
   const tabs: { id: Tab; label: string }[] = [
+    { id: "groups", label: "Groups" },
     { id: "permissions", label: "Permissions" },
     { id: "roles", label: "Roles & matrix" },
     { id: "audit", label: "Who / when" },
@@ -281,7 +336,7 @@ export default function AccessControlPage() {
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-ink-950">Access Control</h1>
         <p className="mt-1 text-sm text-ink-500">
-          Searchable masters with active/inactive, permission matrix, and full change history.
+          Group = folder for permissions. Create groups first, then permissions, then attach them to roles.
         </p>
       </div>
 
@@ -300,14 +355,111 @@ export default function AccessControlPage() {
         ))}
       </div>
 
+      {tab === "groups" && (
+        <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
+          <Panel title="Add group">
+            <p className="mb-3 text-xs text-ink-500">
+              A group is only a category (like Members / Settings). It is not a role.
+            </p>
+            <form onSubmit={onCreateGroup} className="space-y-2">
+              <Field label="Slug" required value={groupSlug} onChange={(e) => setGroupSlug(e.target.value)} placeholder="billing" />
+              <Field label="Name" required value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Billing" />
+              <PrimaryButton type="submit" disabled={busy} className="w-full">
+                Add group
+              </PrimaryButton>
+            </form>
+          </Panel>
+          <Panel title="Permission groups master">
+            <div className="mb-3 flex flex-wrap gap-2">
+              <input
+                className="admin-input max-w-xs flex-1"
+                placeholder="Search groups…"
+                value={groupQ}
+                onChange={(e) => setGroupQ(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn-ghost px-3 py-1.5 text-xs"
+                onClick={() => loadGroups(1).catch((err) => alert.error(friendlyErrorMessage(err)))}
+              >
+                Search
+              </button>
+            </div>
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-ink-100 text-ink-500">
+                  <th className="px-2 py-2 font-medium">Group</th>
+                  <th className="px-2 py-2 font-medium">Status</th>
+                  <th className="px-2 py-2 font-medium">History</th>
+                  <th className="px-2 py-2 font-medium">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupMasters.map((g) => (
+                  <tr key={g.id} className="border-b border-ink-50 align-top">
+                    <td className="px-2 py-3">
+                      <p className="font-semibold text-ink-900">{g.name}</p>
+                      <p className="text-xs text-ink-500">{g.slug}</p>
+                    </td>
+                    <td className="px-2 py-3">
+                      <span
+                        className={`rounded-lg px-2 py-1 text-[11px] font-semibold ${
+                          g.is_active ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-500"
+                        }`}
+                      >
+                        {g.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="px-2 py-3">
+                      <MetaLine
+                        createdAt={g.created_at}
+                        updatedAt={g.updated_at}
+                        createdBy={actorLabel(g.created_by)}
+                        updatedBy={actorLabel(g.updated_by)}
+                      />
+                    </td>
+                    <td className="px-2 py-3">
+                      <button
+                        type="button"
+                        className="btn-ghost px-2.5 py-1 text-xs"
+                        disabled={busy}
+                        onClick={() => toggleGroupActive(g)}
+                      >
+                        {g.is_active ? "Deactivate" : "Activate"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pager meta={groupMeta} onPage={(p) => loadGroups(p)} />
+          </Panel>
+        </div>
+      )}
+
       {tab === "permissions" && (
         <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
           <Panel title="Add permission">
             <form onSubmit={onCreatePermission} className="space-y-2">
               <Field label="Code" required value={permCode} onChange={(e) => setPermCode(e.target.value)} placeholder="org.example.action" />
               <Field label="Name" required value={permName} onChange={(e) => setPermName(e.target.value)} />
-              <Field label="Group" value={permGroupNew} onChange={(e) => setPermGroupNew(e.target.value)} />
-              <PrimaryButton type="submit" disabled={busy} className="w-full">
+              <label className="block text-sm font-medium text-ink-700">
+                Group
+                <select
+                  className="admin-input"
+                  value={permGroupNew}
+                  onChange={(e) => setPermGroupNew(e.target.value)}
+                  required
+                >
+                  {groups.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-[11px] text-ink-400">Pick from Groups master. Create groups in the Groups tab first.</p>
+              <PrimaryButton type="submit" disabled={busy || groups.length === 0} className="w-full">
                 Add permission
               </PrimaryButton>
             </form>

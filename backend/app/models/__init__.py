@@ -7,7 +7,7 @@ from app.models.organization import (
     Subscription,
     SubscriptionPlan,
 )
-from app.models.rbac import Permission, Role, RolePermission
+from app.models.rbac import Permission, PermissionGroup, Role, RolePermission
 from app.models.user import (
     EmailVerificationToken,
     PasswordResetToken,
@@ -26,6 +26,7 @@ __all__ = [
     "OrganizationMember",
     "PasswordResetToken",
     "Permission",
+    "PermissionGroup",
     "RefreshToken",
     "Role",
     "RolePermission",

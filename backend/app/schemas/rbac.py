@@ -10,11 +10,49 @@ class ActorOut(BaseModel):
     full_name: str | None = None
 
 
+class PageMeta(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class PermissionGroupOut(BaseModel):
+    id: UUID
+    slug: str
+    name: str
+    description: str | None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    created_by: ActorOut | None = None
+    updated_by: ActorOut | None = None
+
+
+class PermissionGroupCreate(BaseModel):
+    slug: str = Field(min_length=2, max_length=80)
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = None
+    is_active: bool = True
+
+
+class PermissionGroupUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = None
+    is_active: bool | None = None
+
+
+class PermissionGroupPage(BaseModel):
+    items: list[PermissionGroupOut]
+    meta: PageMeta
+
+
 class PermissionOut(BaseModel):
     id: UUID
     code: str
     name: str
     group: str
+    group_id: UUID | None = None
     description: str | None
     is_active: bool
     created_at: datetime
@@ -29,6 +67,7 @@ class PermissionCreate(BaseModel):
     code: str = Field(min_length=3, max_length=120)
     name: str = Field(min_length=1, max_length=200)
     group: str = Field(default="general", max_length=80)
+    group_id: UUID | None = None
     description: str | None = None
     is_active: bool = True
 
@@ -36,6 +75,7 @@ class PermissionCreate(BaseModel):
 class PermissionUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     group: str | None = Field(default=None, max_length=80)
+    group_id: UUID | None = None
     description: str | None = None
     is_active: bool | None = None
 
@@ -81,13 +121,6 @@ class InviteByRole(BaseModel):
     email: EmailStr
     role_id: UUID | None = None
     role_slug: str = "recruiter"
-
-
-class PageMeta(BaseModel):
-    total: int
-    page: int
-    page_size: int
-    pages: int
 
 
 class PermissionPage(BaseModel):

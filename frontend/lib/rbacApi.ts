@@ -6,11 +6,24 @@ export type ActorInfo = {
   full_name: string | null;
 };
 
+export type RbacPermissionGroup = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: ActorInfo | null;
+  updated_by: ActorInfo | null;
+};
+
 export type RbacPermission = {
   id: string;
   code: string;
   name: string;
   group: string;
+  group_id: string | null;
   description: string | null;
   is_active: boolean;
   created_at: string;
@@ -43,6 +56,7 @@ export type PageMeta = {
 
 export type PermissionPage = { items: RbacPermission[]; meta: PageMeta };
 export type RolePage = { items: RbacRole[]; meta: PageMeta };
+export type PermissionGroupPage = { items: RbacPermissionGroup[]; meta: PageMeta };
 
 export type RbacAuditItem = {
   id: string;
@@ -85,10 +99,30 @@ export const fetchPermissions = (params: {
 
 export const fetchPermissionGroups = () => apiFetch<string[]>("/rbac/permission-groups", {}, true);
 
+export const fetchGroupMasters = (params: {
+  q?: string;
+  is_active?: boolean | "";
+  page?: number;
+  page_size?: number;
+} = {}) => apiFetch<PermissionGroupPage>(`/rbac/groups${qs(params)}`, {}, true);
+
+export const createGroupMaster = (body: {
+  slug: string;
+  name: string;
+  description?: string;
+  is_active?: boolean;
+}) => apiFetch<RbacPermissionGroup>("/rbac/groups", { method: "POST", body: JSON.stringify(body) }, true);
+
+export const updateGroupMaster = (
+  id: string,
+  body: { name?: string; description?: string | null; is_active?: boolean },
+) => apiFetch<RbacPermissionGroup>(`/rbac/groups/${id}`, { method: "PATCH", body: JSON.stringify(body) }, true);
+
 export const createPermission = (body: {
   code: string;
   name: string;
   group?: string;
+  group_id?: string;
   description?: string;
   is_active?: boolean;
 }) => apiFetch<RbacPermission>("/rbac/permissions", { method: "POST", body: JSON.stringify(body) }, true);

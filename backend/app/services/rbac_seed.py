@@ -1,9 +1,17 @@
-"""Seed permission catalog + system roles (idempotent)."""
+"""Seed permission groups, permission catalog + system roles (idempotent)."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Permission, Role, RolePermission
+from app.models import Permission, PermissionGroup, Role, RolePermission
+
+GROUPS = [
+    ("organization", "Organization", "Org basics"),
+    ("members", "Members", "People in a workspace"),
+    ("roles", "Roles", "Org role management"),
+    ("settings", "Settings", "Workspace settings"),
+    ("general", "General", "Uncategorized"),
+]
 
 PERMISSIONS = [
     ("org.view", "View organization", "organization", "View org basics"),
@@ -37,16 +45,39 @@ SYSTEM_ROLE_META = {
 
 
 def seed_rbac_defaults(db: Session) -> None:
+    group_by_slug: dict[str, PermissionGroup] = {}
+    for slug, name, description in GROUPS:
+        existing = db.scalar(select(PermissionGroup).where(PermissionGroup.slug == slug))
+        if existing:
+            existing.name = name
+            existing.description = description
+            existing.is_active = True
+            group_by_slug[slug] = existing
+        else:
+            row = PermissionGroup(slug=slug, name=name, description=description, is_active=True)
+            db.add(row)
+            db.flush()
+            group_by_slug[slug] = row
+
     perm_by_code: dict[str, Permission] = {}
-    for code, name, group, description in PERMISSIONS:
+    for code, name, group_slug, description in PERMISSIONS:
+        grp = group_by_slug.get(group_slug) or group_by_slug["general"]
         existing = db.scalar(select(Permission).where(Permission.code == code))
         if existing:
             existing.name = name
-            existing.group = group
+            existing.group = grp.slug
+            existing.group_id = grp.id
             existing.description = description
             perm_by_code[code] = existing
         else:
-            row = Permission(code=code, name=name, group=group, description=description)
+            row = Permission(
+                code=code,
+                name=name,
+                group=grp.slug,
+                group_id=grp.id,
+                description=description,
+                is_active=True,
+            )
             db.add(row)
             db.flush()
             perm_by_code[code] = row

@@ -10,6 +10,10 @@ from app.schemas.organization import MemberOut
 from app.schemas.rbac import (
     MemberRoleAssign,
     PermissionCreate,
+    PermissionGroupCreate,
+    PermissionGroupOut,
+    PermissionGroupPage,
+    PermissionGroupUpdate,
     PermissionOut,
     PermissionPage,
     PermissionUpdate,
@@ -42,8 +46,59 @@ def list_permissions(
 
 
 @router.get("/permission-groups", response_model=list[str])
-def permission_groups(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def permission_group_slugs(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Active group slugs for dropdowns."""
     return rbac_svc.list_permission_groups(db)
+
+
+@router.get("/groups", response_model=PermissionGroupPage)
+def list_groups(
+    q: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    _: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    rows, meta = rbac_svc.list_permission_group_masters(
+        db, q=q, is_active=is_active, page=page, page_size=page_size
+    )
+    return PermissionGroupPage(items=[PermissionGroupOut(**rbac_svc.group_to_dict(db, r)) for r in rows], meta=meta)
+
+
+@router.post("/groups", response_model=PermissionGroupOut, status_code=status.HTTP_201_CREATED)
+def create_group(
+    payload: PermissionGroupCreate,
+    admin: User = Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+):
+    row = rbac_svc.create_permission_group(
+        db,
+        actor_id=admin.id,
+        slug=payload.slug,
+        name=payload.name,
+        description=payload.description,
+        is_active=payload.is_active,
+    )
+    return PermissionGroupOut(**rbac_svc.group_to_dict(db, row))
+
+
+@router.patch("/groups/{group_id}", response_model=PermissionGroupOut)
+def update_group(
+    group_id: UUID,
+    payload: PermissionGroupUpdate,
+    admin: User = Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+):
+    row = rbac_svc.update_permission_group(
+        db,
+        actor_id=admin.id,
+        group_id=group_id,
+        name=payload.name,
+        description=payload.description,
+        is_active=payload.is_active,
+    )
+    return PermissionGroupOut(**rbac_svc.group_to_dict(db, row))
 
 
 @router.post("/permissions", response_model=PermissionOut, status_code=status.HTTP_201_CREATED)
@@ -58,6 +113,7 @@ def create_permission(
         code=payload.code,
         name=payload.name,
         group=payload.group,
+        group_id=payload.group_id,
         description=payload.description,
         is_active=payload.is_active,
     )
@@ -77,6 +133,7 @@ def update_permission(
         permission_id=permission_id,
         name=payload.name,
         group=payload.group,
+        group_id=payload.group_id,
         description=payload.description,
         is_active=payload.is_active,
     )

@@ -138,9 +138,10 @@ export default function PlatformAdminPage() {
           organization_id: orgId || undefined,
           include_system: true,
           is_active: true,
-          page_size: 100,
+          page: 1,
+          page_size: 50,
         }),
-        fetchPermissions({ is_active: true, page_size: 100 }),
+        fetchPermissions({ is_active: true, page: 1, page_size: 50 }),
       ]);
       setRoles(r.items);
       setAllPerms(p.items);

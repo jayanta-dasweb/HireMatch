@@ -35,7 +35,7 @@ def list_permissions(
     group: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=25, ge=1, le=100),
+    page_size: int = Query(default=25, ge=1, le=200),
     _: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -56,7 +56,7 @@ def list_groups(
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=100),
+    page_size: int = Query(default=50, ge=1, le=200),
     _: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -147,7 +147,7 @@ def list_roles(
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=25, ge=1, le=100),
+    page_size: int = Query(default=25, ge=1, le=200),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

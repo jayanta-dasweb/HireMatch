@@ -332,9 +332,9 @@ export default function AccessControlPage() {
   ];
 
   return (
-    <AdminShell title="Access Control" userName={user.full_name} userEmail={user.email} isPlatformAdmin>
+    <AdminShell title="Permission catalog" userName={user.full_name} userEmail={user.email} isPlatformAdmin>
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-ink-950">Access Control</h1>
+        <h1 className="font-display text-2xl font-bold text-ink-950">Permission catalog</h1>
         <p className="mt-1 text-sm text-ink-500">
           Group = folder for permissions. Create groups first, then permissions, then attach them to roles.
         </p>

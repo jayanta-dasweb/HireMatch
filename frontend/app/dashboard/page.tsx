@@ -49,6 +49,7 @@ function DashboardHome() {
   if (loading || !user) return <DashboardSkeleton />;
 
   const workspaces = user.memberships.length;
+  const orgRole = activeMembership?.role?.replaceAll("_", " ") || "—";
 
   async function onCreateOrg(e: FormEvent) {
     e.preventDefault();
@@ -80,7 +81,7 @@ function DashboardHome() {
       setActiveOrgId(org.id);
       setShowCreateOrg(false);
       setOrgForm(emptyOrgForm);
-      alert.success("Organization created. You are the org admin.", "Workspace ready");
+      alert.success("Organization created. You are the org admin for that workspace.", "Workspace ready");
       router.replace("/dashboard");
     } catch (err) {
       alert.error(friendlyErrorMessage(err, "Could not create organization"));
@@ -96,20 +97,15 @@ function DashboardHome() {
       userEmail={user.email}
       isPlatformAdmin={user.is_platform_admin}
     >
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-ink-950 md:text-3xl">
-            Welcome back, {user.full_name.split(" ")[0]}
-          </h1>
-          <p className="mt-1 text-sm text-ink-500">
-            {activeMembership
-              ? `Working in ${activeMembership.organization_name}. Switch workspace from the top bar.`
-              : "Multi-tenant SaaS: each organization keeps its own team and data."}
-          </p>
-        </div>
-        <button type="button" className="btn-primary" onClick={() => setShowCreateOrg(true)}>
-          Create organization
-        </button>
+      <div className="mb-6">
+        <h1 className="font-display text-2xl font-bold text-ink-950 md:text-3xl">
+          Welcome back, {user.full_name.split(" ")[0]}
+        </h1>
+        <p className="mt-1 text-sm text-ink-500">
+          {activeMembership
+            ? `Active workspace: ${activeMembership.organization_name} · your role here: ${orgRole}`
+            : "Pick or create a workspace to get started."}
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -143,37 +139,22 @@ function DashboardHome() {
         />
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-3">
-        <Panel
-          title="Account"
-          action={<Link href="/dashboard/settings" className="text-sm font-semibold text-brand-700">Edit</Link>}
-        >
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between gap-4 border-b border-ink-50 pb-3">
-              <dt className="text-ink-500">Full name</dt>
-              <dd className="font-semibold text-ink-900">{user.full_name}</dd>
-            </div>
-            <div className="flex justify-between gap-4 border-b border-ink-50 pb-3">
-              <dt className="text-ink-500">Email</dt>
-              <dd className="font-semibold text-ink-900">{user.email}</dd>
-            </div>
-            <div className="flex justify-between gap-4 border-b border-ink-50 pb-3">
-              <dt className="text-ink-500">Active org</dt>
-              <dd className="font-semibold text-ink-900">
-                {activeMembership?.organization_name || "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-ink-500">Platform admin</dt>
-              <dd className="font-semibold text-ink-900">{user.is_platform_admin ? "Yes" : "No"}</dd>
-            </div>
-          </dl>
-        </Panel>
-
+      <div className="mt-6 grid gap-4 xl:grid-cols-2">
         <Panel
           title="Your organizations"
-          action={<Link href="/dashboard/team" className="text-sm font-semibold text-brand-700">Team</Link>}
+          action={
+            <button
+              type="button"
+              className="text-sm font-semibold text-brand-700"
+              onClick={() => setShowCreateOrg(true)}
+            >
+              + New company
+            </button>
+          }
         >
+          <p className="mb-3 text-xs text-ink-500">
+            Click a row to switch workspace. Team and permissions apply only inside the active org.
+          </p>
           <ul className="space-y-3">
             {user.memberships.map((m) => {
               const active = m.organization_id === activeMembership?.organization_id;
@@ -190,15 +171,17 @@ function DashboardHome() {
                   >
                     <div>
                       <p className="text-sm font-semibold text-ink-900">{m.organization_name}</p>
-                      <p className="text-xs capitalize text-ink-500">{m.role.replaceAll("_", " ")}</p>
+                      <p className="text-xs capitalize text-ink-500">
+                        Org role: {m.role.replaceAll("_", " ")}
+                      </p>
                     </div>
                     {m.is_personal ? (
-                      <span className="rounded-lg bg-brand-50 px-2 py-1 text-[11px] font-semibold text-brand-700">
+                      <span className="rounded-lg bg-ink-100 px-2 py-1 text-[11px] font-semibold text-ink-600">
                         Personal
                       </span>
                     ) : (
                       <span className="rounded-lg bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700">
-                        Team
+                        Company
                       </span>
                     )}
                   </button>
@@ -208,21 +191,38 @@ function DashboardHome() {
           </ul>
         </Panel>
 
-        <Panel title="Quick actions">
-          <div className="space-y-3">
-            <button type="button" className="btn-primary w-full" onClick={() => setShowCreateOrg(true)}>
-              Create organization
-            </button>
-            <Link href="/dashboard/team" className="btn-ghost w-full">
-              Team — invite & assign roles
-            </Link>
-            {user.is_platform_admin && (
-              <Link href="/dashboard/admin/rbac" className="btn-ghost w-full">
-                Access Control
-              </Link>
-            )}
-            <Link href="/dashboard/settings" className="btn-ghost w-full">
-              Profile settings
+        <Panel title="Who can do what">
+          <dl className="space-y-4 text-sm">
+            <div>
+              <dt className="font-semibold text-ink-900">Platform admin</dt>
+              <dd className="mt-1 text-ink-500">
+                HireMatch operator only (you: {user.is_platform_admin ? "yes" : "no"}). Manages all accounts,
+                orgs, and the permission catalog across the product. Not an org role.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-ink-900">Organization admin / member</dt>
+              <dd className="mt-1 text-ink-500">
+                Role inside one company. Org admin can invite people and give them create/edit/delete
+                permissions for <span className="font-medium text-ink-700">that org only</span> (Team page).
+                Those rights never open another company&apos;s data.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-ink-900">Special permissions</dt>
+              <dd className="mt-1 text-ink-500">
+                Extra grants on one user in one org (e.g. <code className="text-xs">org.edit</code>,{" "}
+                <code className="text-xs">org.members.create</code>). Set from System console → Users →
+                Roles &amp; permissions, or assign a role on Team.
+              </dd>
+            </div>
+            <div className="rounded-xl border border-ink-100 bg-surface-muted px-3 py-3 text-xs text-ink-600">
+              Team / profile / system tools live in the left menu only — not duplicated here.
+            </div>
+          </dl>
+          <div className="mt-4">
+            <Link href="/dashboard/settings" className="text-sm font-semibold text-brand-700">
+              Edit my profile →
             </Link>
           </div>
         </Panel>
@@ -239,9 +239,10 @@ function DashboardHome() {
           <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-[0_24px_64px_rgba(0,0,0,0.28)]">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="font-display text-xl font-bold text-ink-950">Create organization</h2>
+                <h2 className="font-display text-xl font-bold text-ink-950">New company workspace</h2>
                 <p className="mt-1 text-sm text-ink-500">
-                  Company workspace profile. You become org admin; team data stays in this tenant.
+                  Creates a separate organization (tenant). You become its org admin. This is not the same as
+                  editing your current workspace.
                 </p>
               </div>
               <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => setShowCreateOrg(false)}>

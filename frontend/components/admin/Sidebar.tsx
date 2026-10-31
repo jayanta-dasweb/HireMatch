@@ -28,9 +28,9 @@ const links: NavItem[] = [
   { href: "/dashboard/resumes", label: "Resumes", icon: IconFile, soon: true, permission: "resumes.view" },
   { href: "/dashboard/jobs", label: "Jobs", icon: IconBriefcase, soon: true, permission: "jobs.view" },
   { href: "/dashboard/team", label: "Team", icon: IconUsers, permission: "org.members.view" },
-  { href: "/dashboard/admin", label: "Platform Admin", icon: IconShield, adminOnly: true },
-  { href: "/dashboard/admin/rbac", label: "Access Control", icon: IconKey, adminOnly: true },
-  { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
+  { href: "/dashboard/admin", label: "System console", icon: IconShield, adminOnly: true },
+  { href: "/dashboard/admin/rbac", label: "Permission catalog", icon: IconKey, adminOnly: true },
+  { href: "/dashboard/settings", label: "My profile", icon: IconSettings },
 ];
 
 function NavLink({

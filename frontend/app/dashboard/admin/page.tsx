@@ -339,15 +339,15 @@ export default function PlatformAdminPage() {
   ];
 
   return (
-    <AdminShell title="Platform Admin" userName={user.full_name} userEmail={user.email} isPlatformAdmin>
+    <AdminShell title="System console" userName={user.full_name} userEmail={user.email} isPlatformAdmin>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ink-950">Platform Admin</h1>
+          <h1 className="font-display text-2xl font-bold text-ink-950">System console</h1>
           <p className="mt-1 max-w-xl text-sm text-ink-500">
-            Manage accounts here. Open a user → Roles & permissions to assign an org role or special
-            grants. Define the catalog in{" "}
+            HireMatch operators only — all users &amp; orgs. Org admins manage their own company from
+            Team. Permission codes live in{" "}
             <Link href="/dashboard/admin/rbac" className="font-semibold text-brand-700">
-              Access Control
+              Permission catalog
             </Link>
             .
           </p>

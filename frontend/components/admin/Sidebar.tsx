@@ -92,9 +92,6 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="border-t border-white/10 px-5 py-4">
-          <p className="text-xs text-white/40">HireMatch</p>
-        </div>
       </aside>
     </>
   );

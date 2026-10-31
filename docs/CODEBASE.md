@@ -14,10 +14,15 @@ backend/app/
   services/      business logic (the important part)
 
 frontend/
-  app/           Next.js pages
-  components/    shared UI (SiteHeader, ui.tsx)
-  lib/api.ts     one place for API calls
+  app/                 Next.js pages
+  components/          public UI (SiteHeader, ui.tsx)
+  components/admin/    free TailAdmin-style shell (sidebar, topbar, cards)
+  lib/api.ts           one place for API calls
 ```
+
+Admin UI inspiration: free TailAdmin / Tabler patterns rebuilt in Tailwind (no paid license).
+Brand colors: teal `brand-*` + slate `ink-*` on `surface-muted`.
+
 
 ## DRY rules
 

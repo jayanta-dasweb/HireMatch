@@ -3,10 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --bg-a: #f7f8f5;
-  --bg-b: #e8eef2;
-  --ink: #0b1220;
-  --accent: #0f766e;
+  --sidebar: #151a23;
+  --sidebar-text: #c9d1de;
+  --brand: #2aa29a;
 }
 
 html,
@@ -15,18 +14,14 @@ body {
 }
 
 body {
-  color: var(--ink);
-  background:
-    radial-gradient(1200px 600px at 10% -10%, #d7ebe7 0%, transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, #d9e4f0 0%, transparent 50%),
-    linear-gradient(180deg, var(--bg-a), var(--bg-b));
-  background-attachment: fixed;
+  color: #343946;
+  background: #f4f7fb;
 }
 
-@keyframes rise-in {
+@keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -34,20 +29,24 @@ body {
   }
 }
 
-@keyframes drift {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
 }
 
-.animate-rise {
-  animation: rise-in 0.7s ease-out both;
-}
+@layer components {
+  .admin-card {
+    @apply rounded-2xl border border-ink-100 bg-white shadow-card;
+  }
 
-.animate-drift {
-  animation: drift 7s ease-in-out infinite;
+  .admin-input {
+    @apply mt-1.5 w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm font-semibold text-ink-700 transition hover:bg-ink-50;
+  }
 }

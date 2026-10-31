@@ -31,7 +31,7 @@ export default function SignInPage() {
   return (
     <PageShell>
       <SiteHeader />
-      <AuthCard title="Sign in" subtitle="Access your HireMatch AI workspace.">
+      <AuthCard title="Sign in" subtitle="Access your HireMatch AI admin workspace.">
         <form onSubmit={onSubmit} className="space-y-4">
           <Field label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           <Field
@@ -44,13 +44,13 @@ export default function SignInPage() {
           />
           <ErrorText message={error} />
           <PrimaryButton type="submit" disabled={loading}>
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Signing in…" : "Sign in to console"}
           </PrimaryButton>
         </form>
-        <p className="mt-4 text-sm text-ink-700">
+        <p className="text-center text-sm text-ink-500">
           No account?{" "}
-          <Link href="/register" className="font-semibold text-accent-strong">
-            Register
+          <Link href="/register" className="font-semibold text-brand-700">
+            Create one
           </Link>
         </p>
       </AuthCard>

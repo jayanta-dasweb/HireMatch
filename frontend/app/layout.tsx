@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Source_Sans_3, Fraunces } from "next/font/google";
+import { Plus_Jakarta_Sans, Manrope } from "next/font/google";
 import "./globals.css";
 
-const sans = Source_Sans_3({
+const sans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-sans",
 });
 
-const display = Fraunces({
+const display = Manrope({
   subsets: ["latin"],
   variable: "--font-display",
 });

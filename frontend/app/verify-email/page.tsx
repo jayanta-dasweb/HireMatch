@@ -22,21 +22,23 @@ function VerifyInner() {
   }, [token]);
 
   return (
-    <section className="mx-auto max-w-lg px-6 py-12 animate-rise">
-      <h1 className="font-display text-4xl">Email verification</h1>
-      <p className="mt-4 text-ink-700">{message}</p>
-      <Link href="/sign-in" className="mt-6 inline-block font-semibold text-accent-strong">
-        Continue to sign in
-      </Link>
+    <section className="mx-auto max-w-lg px-6 py-12 animate-fade-up">
+      <div className="admin-card p-8">
+        <h1 className="font-display text-3xl font-bold text-ink-950">Email verification</h1>
+        <p className="mt-4 text-ink-600">{message}</p>
+        <Link href="/sign-in" className="btn-primary mt-6 inline-flex">
+          Continue to sign in
+        </Link>
+      </div>
     </section>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <main>
+    <main className="min-h-screen bg-surface-muted">
       <SiteHeader />
-      <Suspense fallback={<p className="p-10">Loading…</p>}>
+      <Suspense fallback={<p className="p-10 text-ink-500">Loading…</p>}>
         <VerifyInner />
       </Suspense>
     </main>

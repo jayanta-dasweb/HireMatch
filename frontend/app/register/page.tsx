@@ -35,10 +35,7 @@ export default function RegisterPage() {
   return (
     <PageShell>
       <SiteHeader />
-      <AuthCard
-        title="Create account"
-        subtitle="Starts with a personal workspace. Agency features arrive later."
-      >
+      <AuthCard title="Create account" subtitle="Get a personal workspace and admin console access.">
         <form onSubmit={onSubmit} className="space-y-4">
           <Field label="Full name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
           <Field label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -52,7 +49,7 @@ export default function RegisterPage() {
           />
           <ErrorText message={error} />
           {devToken && (
-            <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-900">
+            <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
               Dev only: verification token {devToken}
             </p>
           )}
@@ -60,9 +57,9 @@ export default function RegisterPage() {
             {loading ? "Creating…" : "Create account"}
           </PrimaryButton>
         </form>
-        <p className="mt-4 text-sm text-ink-700">
+        <p className="text-center text-sm text-ink-500">
           Already registered?{" "}
-          <Link href="/sign-in" className="font-semibold text-accent-strong">
+          <Link href="/sign-in" className="font-semibold text-brand-700">
             Sign in
           </Link>
         </p>

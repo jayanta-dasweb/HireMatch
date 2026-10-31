@@ -1,10 +1,7 @@
 import { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
-const fieldClass =
-  "mt-1 w-full rounded-md border border-ink-800/15 px-3 py-2 outline-none ring-accent focus:ring-2";
-
 export function PageShell({ children }: { children: ReactNode }) {
-  return <main>{children}</main>;
+  return <main className="min-h-screen bg-surface-muted">{children}</main>;
 }
 
 export function AuthCard({
@@ -17,11 +14,16 @@ export function AuthCard({
   children: ReactNode;
 }) {
   return (
-    <section className="mx-auto max-w-md px-6 py-10 animate-rise">
-      <h1 className="font-display text-4xl text-ink-950">{title}</h1>
-      <p className="mt-2 text-ink-700">{subtitle}</p>
-      <div className="mt-8 space-y-4 rounded-2xl bg-white/80 p-6 shadow-soft backdrop-blur">
-        {children}
+    <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center px-6 py-10 animate-fade-up">
+      <div className="w-full">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 font-display text-sm font-bold text-white shadow-float">
+            HM
+          </div>
+          <h1 className="font-display text-3xl font-bold text-ink-950">{title}</h1>
+          <p className="mt-2 text-sm text-ink-500">{subtitle}</p>
+        </div>
+        <div className="admin-card space-y-4 p-6 md:p-7">{children}</div>
       </div>
     </section>
   );
@@ -32,9 +34,9 @@ export function Field({
   ...props
 }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <label className="block text-sm font-medium">
+    <label className="block text-sm font-medium text-ink-700">
       {label}
-      <input className={fieldClass} {...props} />
+      <input className="admin-input" {...props} />
     </label>
   );
 }
@@ -44,10 +46,7 @@ export function PrimaryButton({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button
-      className="w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-white hover:bg-accent-strong disabled:opacity-60"
-      {...props}
-    >
+    <button className="btn-primary w-full" {...props}>
       {children}
     </button>
   );
@@ -55,5 +54,5 @@ export function PrimaryButton({
 
 export function ErrorText({ message }: { message: string | null }) {
   if (!message) return null;
-  return <p className="text-sm text-red-700">{message}</p>;
+  return <p className="text-sm font-medium text-rose-600">{message}</p>;
 }

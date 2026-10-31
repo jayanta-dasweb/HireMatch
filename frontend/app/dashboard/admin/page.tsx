@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Panel, StatCard } from "@/components/admin/StatCard";
@@ -26,6 +27,8 @@ import {
 import { friendlyErrorMessage } from "@/lib/errors";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
+type Tab = "users" | "orgs" | "activity";
+
 function ModalShell({
   title,
   children,
@@ -38,11 +41,28 @@ function ModalShell({
   return (
     <div className="fixed inset-0 z-[9000] flex items-center justify-center p-4">
       <button type="button" className="absolute inset-0 bg-black/55" aria-label="Close" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-[0_24px_64px_rgba(0,0,0,0.28)]">
-        <h2 className="font-display text-xl font-bold text-ink-950">{title}</h2>
+      <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-[0_24px_64px_rgba(0,0,0,0.28)]">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="font-display text-xl font-bold text-ink-950">{title}</h2>
+          <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={onClose}>
+            Close
+          </button>
+        </div>
         <div className="mt-4">{children}</div>
       </div>
     </div>
+  );
+}
+
+function StatusPill({ on, onLabel, offLabel }: { on: boolean; onLabel: string; offLabel: string }) {
+  return (
+    <span
+      className={`rounded-lg px-2 py-1 text-[11px] font-semibold ${
+        on ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-500"
+      }`}
+    >
+      {on ? onLabel : offLabel}
+    </span>
   );
 }
 
@@ -50,27 +70,30 @@ export default function PlatformAdminPage() {
   const router = useRouter();
   const alert = useAlert();
   const { user, loading } = useCurrentUser();
+  const [tab, setTab] = useState<Tab>("users");
   const [health, setHealth] = useState<AdminHealth | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [orgs, setOrgs] = useState<AdminOrg[]>([]);
   const [audit, setAudit] = useState<AuditLog[]>([]);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+
   const [showCreate, setShowCreate] = useState(false);
-  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newAdmin, setNewAdmin] = useState(false);
-  const [resetPassword, setResetPassword] = useState("");
-  const [saving, setSaving] = useState(false);
 
   async function reload() {
     const [h, u, o, a] = await Promise.all([
       adminFetchHealth(),
       adminFetchUsers(),
       adminFetchOrgs(),
-      adminFetchAudit(80),
+      adminFetchAudit(50),
     ]);
     setHealth(h);
     setUsers(u);
@@ -88,73 +111,70 @@ export default function PlatformAdminPage() {
     reload().catch((err) => alert.error(friendlyErrorMessage(err, "Failed to load admin data")));
   }, [user, loading, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function runAction(id: string, fn: () => Promise<void>, okMsg: string) {
-    setBusyId(id);
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (u) => u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+    );
+  }, [users, search]);
+
+  const filteredOrgs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return orgs;
+    return orgs.filter((o) => o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q));
+  }, [orgs, search]);
+
+  async function patchUser(target: AdminUser, body: Parameters<typeof adminUpdateUser>[1], ok: string) {
+    setBusy(true);
     try {
-      await fn();
-      alert.success(okMsg, "Done");
+      const updated = await adminUpdateUser(target.id, body);
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      setSelected(updated);
+      alert.success(ok, "Updated");
+      const a = await adminFetchAudit(50);
+      setAudit(a);
     } catch (err) {
-      alert.error(friendlyErrorMessage(err, "Action failed"));
+      alert.error(friendlyErrorMessage(err));
     } finally {
-      setBusyId(null);
+      setBusy(false);
     }
   }
 
-  async function toggleActive(target: AdminUser) {
-    await runAction(
-      target.id,
-      async () => {
-        const updated = await adminSetUserActive(target.id, !target.is_active);
-        setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-      },
-      target.is_active ? "User disabled." : "User enabled.",
-    );
-  }
-
-  async function toggleAdmin(target: AdminUser) {
-    if (target.id === user?.id && target.is_platform_admin) {
-      alert.warning("You cannot remove your own platform admin access.");
+  async function onToggleActive(target: AdminUser) {
+    if (target.id === user?.id && target.is_active) {
+      alert.warning("You cannot disable your own account.");
       return;
     }
-    await runAction(
-      `admin-${target.id}`,
-      async () => {
-        const updated = await adminUpdateUser(target.id, {
-          is_platform_admin: !target.is_platform_admin,
-        });
-        setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-      },
-      target.is_platform_admin ? "Platform admin revoked." : "Platform admin granted.",
-    );
+    setBusy(true);
+    try {
+      const updated = await adminSetUserActive(target.id, !target.is_active);
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      setSelected(updated);
+      alert.success(target.is_active ? "User disabled." : "User enabled.", "Updated");
+    } catch (err) {
+      alert.error(friendlyErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  async function toggleVerified(target: AdminUser) {
-    await runAction(
-      `verify-${target.id}`,
-      async () => {
-        const updated = await adminUpdateUser(target.id, {
-          is_email_verified: !target.is_email_verified,
-        });
-        setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-      },
-      target.is_email_verified ? "Email marked unverified." : "Email marked verified.",
-    );
-  }
-
-  async function toggleOrg(target: AdminOrg) {
-    await runAction(
-      `org-${target.id}`,
-      async () => {
-        const updated = await adminSetOrgActive(target.id, !target.is_active);
-        setOrgs((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-      },
-      target.is_active ? "Organization disabled." : "Organization enabled.",
-    );
+  async function onToggleOrg(target: AdminOrg) {
+    setBusy(true);
+    try {
+      const updated = await adminSetOrgActive(target.id, !target.is_active);
+      setOrgs((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+      alert.success(target.is_active ? "Organization disabled." : "Organization enabled.", "Updated");
+    } catch (err) {
+      alert.error(friendlyErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
-    setSaving(true);
+    setBusy(true);
     try {
       const created = await adminCreateUser({
         email: newEmail.trim(),
@@ -170,55 +190,62 @@ export default function PlatformAdminPage() {
       setNewEmail("");
       setNewPassword("");
       setNewAdmin(false);
-      alert.success("User created with a personal workspace.", "User created");
-      const a = await adminFetchAudit(80);
-      setAudit(a);
+      setSelected(created);
+      setTab("users");
+      alert.success("User created.", "Done");
+      await reload();
     } catch (err) {
       alert.error(friendlyErrorMessage(err, "Could not create user"));
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
   }
 
   async function onReset(e: FormEvent) {
     e.preventDefault();
-    if (!resetTarget) return;
-    setSaving(true);
+    if (!selected) return;
+    setBusy(true);
     try {
-      await adminResetPassword(resetTarget.id, resetPassword);
-      setResetTarget(null);
+      await adminResetPassword(selected.id, resetPassword);
+      setResetMode(false);
       setResetPassword("");
-      alert.success("Password updated. Their other sessions were signed out.", "Password reset");
-      const a = await adminFetchAudit(80);
-      setAudit(a);
+      alert.success("Password updated. Other sessions signed out.", "Done");
+      await reload();
     } catch (err) {
-      alert.error(friendlyErrorMessage(err, "Could not reset password"));
+      alert.error(friendlyErrorMessage(err));
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
   }
 
   if (loading || !user) return <DashboardSkeleton />;
   if (!user.is_platform_admin) return <DashboardSkeleton />;
 
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "users", label: "Users" },
+    { id: "orgs", label: "Organizations" },
+    { id: "activity", label: "Recent activity" },
+  ];
+
   return (
-    <AdminShell
-      title="Platform Admin"
-      userName={user.full_name}
-      userEmail={user.email}
-      isPlatformAdmin
-    >
+    <AdminShell title="Platform Admin" userName={user.full_name} userEmail={user.email} isPlatformAdmin>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-ink-950">Platform Admin</h1>
-          <p className="mt-1 text-sm text-ink-500">Manage users, organizations, and audit from here.</p>
+          <p className="mt-1 max-w-xl text-sm text-ink-500">
+            Create and manage accounts & workspaces. For roles and permissions, use{" "}
+            <Link href="/dashboard/admin/rbac" className="font-semibold text-brand-700">
+              Access Control
+            </Link>
+            .
+          </p>
         </div>
         <button type="button" className="btn-primary" onClick={() => setShowCreate(true)}>
           Create user
         </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Users"
           value={String(health?.user_count ?? "—")}
@@ -240,191 +267,264 @@ export default function PlatformAdminPage() {
           icon={<IconBriefcase className="h-5 w-5" />}
           tone="amber"
         />
-        <StatCard
-          label="Your role"
-          value="Admin"
-          hint="platform_admin"
-          icon={<IconUsers className="h-5 w-5" />}
-          tone="rose"
-        />
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-2">
-        <Panel title="All users">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+              tab === t.id ? "bg-brand-600 text-white" : "bg-white text-ink-600 ring-1 ring-ink-200"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+        {(tab === "users" || tab === "orgs") && (
+          <input
+            className="admin-input ml-auto max-w-xs"
+            placeholder={tab === "users" ? "Search users…" : "Search organizations…"}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        )}
+      </div>
+
+      {tab === "users" && (
+        <Panel title="Users">
+          <p className="mb-3 text-xs text-ink-500">Click a row to manage that account. One place for all actions.</p>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-100 text-ink-500">
-                  <th className="px-2 py-3 font-medium">User</th>
-                  <th className="px-2 py-3 font-medium">Flags</th>
-                  <th className="px-2 py-3 font-medium">Actions</th>
+                  <th className="px-2 py-3 font-medium">Name</th>
+                  <th className="px-2 py-3 font-medium">Email</th>
+                  <th className="px-2 py-3 font-medium">Status</th>
+                  <th className="px-2 py-3 font-medium" />
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-b border-ink-50 align-top">
-                    <td className="px-2 py-3">
-                      <p className="font-semibold text-ink-900">{u.full_name}</p>
-                      <p className="text-xs text-ink-500">{u.email}</p>
-                      <p className="mt-1 text-[11px] text-ink-400">{u.membership_count} memberships</p>
+                {filteredUsers.map((u) => (
+                  <tr
+                    key={u.id}
+                    className="cursor-pointer border-b border-ink-50 hover:bg-ink-50/70"
+                    onClick={() => {
+                      setSelected(u);
+                      setResetMode(false);
+                      setResetPassword("");
+                    }}
+                  >
+                    <td className="px-2 py-3 font-semibold text-ink-900">
+                      {u.full_name}
+                      {u.is_platform_admin && (
+                        <span className="ml-2 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-rose-700">
+                          Admin
+                        </span>
+                      )}
                     </td>
+                    <td className="px-2 py-3 text-ink-600">{u.email}</td>
                     <td className="px-2 py-3">
                       <div className="flex flex-wrap gap-1">
-                        <span
-                          className={`rounded-lg px-2 py-1 text-[11px] font-semibold ${
-                            u.is_active ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-500"
-                          }`}
-                        >
-                          {u.is_active ? "Active" : "Disabled"}
-                        </span>
-                        <span
-                          className={`rounded-lg px-2 py-1 text-[11px] font-semibold ${
-                            u.is_email_verified ? "bg-sky-50 text-sky-700" : "bg-amber-50 text-amber-800"
-                          }`}
-                        >
-                          {u.is_email_verified ? "Verified" : "Unverified"}
-                        </span>
-                        {u.is_platform_admin && (
-                          <span className="rounded-lg bg-rose-50 px-2 py-1 text-[11px] font-bold uppercase text-rose-700">
-                            Admin
-                          </span>
-                        )}
+                        <StatusPill on={u.is_active} onLabel="Active" offLabel="Disabled" />
+                        <StatusPill on={u.is_email_verified} onLabel="Verified" offLabel="Unverified" />
                       </div>
                     </td>
-                    <td className="px-2 py-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          className="btn-ghost px-2.5 py-1 text-xs"
-                          disabled={busyId === u.id || u.id === user.id}
-                          onClick={() => toggleActive(u)}
-                        >
-                          {u.is_active ? "Disable" : "Enable"}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-ghost px-2.5 py-1 text-xs"
-                          disabled={busyId === `admin-${u.id}` || (u.id === user.id && u.is_platform_admin)}
-                          onClick={() => toggleAdmin(u)}
-                        >
-                          {u.is_platform_admin ? "Revoke admin" : "Make admin"}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-ghost px-2.5 py-1 text-xs"
-                          disabled={busyId === `verify-${u.id}`}
-                          onClick={() => toggleVerified(u)}
-                        >
-                          {u.is_email_verified ? "Unverify" : "Verify"}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-ghost px-2.5 py-1 text-xs"
-                          onClick={() => {
-                            setResetPassword("");
-                            setResetTarget(u);
-                          }}
-                        >
-                          Reset password
-                        </button>
-                      </div>
+                    <td className="px-2 py-3 text-right">
+                      <span className="text-xs font-semibold text-brand-700">Manage →</span>
                     </td>
                   </tr>
                 ))}
+                {filteredUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-2 py-6 text-sm text-ink-400">
+                      No users match your search.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </Panel>
+      )}
 
-        <div className="space-y-4">
-          <Panel title="Organizations">
-            <ul className="space-y-3">
-              {orgs.map((o) => (
-                <li
-                  key={o.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-ink-100 bg-surface-muted px-3 py-3"
-                >
+      {tab === "orgs" && (
+        <Panel title="Organizations">
+          <ul className="divide-y divide-ink-50">
+            {filteredOrgs.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-ink-900">{o.name}</p>
+                  <p className="text-xs text-ink-500">
+                    {o.slug} · {o.is_personal ? "Personal" : "Team org"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <StatusPill on={o.is_active} onLabel="Active" offLabel="Disabled" />
+                  <button
+                    type="button"
+                    className="btn-ghost px-3 py-1.5 text-xs"
+                    disabled={busy}
+                    onClick={() => onToggleOrg(o)}
+                  >
+                    {o.is_active ? "Disable" : "Enable"}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
+      {tab === "activity" && (
+        <Panel title="Recent activity">
+          <table className="min-w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-ink-100 text-ink-500">
+                <th className="px-2 py-2 font-medium">When</th>
+                <th className="px-2 py-2 font-medium">Action</th>
+                <th className="px-2 py-2 font-medium">Resource</th>
+              </tr>
+            </thead>
+            <tbody>
+              {audit.map((row) => (
+                <tr key={row.id} className="border-b border-ink-50">
+                  <td className="px-2 py-2 text-xs text-ink-500">{new Date(row.created_at).toLocaleString()}</td>
+                  <td className="px-2 py-2 font-medium text-ink-800">{row.action}</td>
+                  <td className="px-2 py-2 text-xs text-ink-500">
+                    {row.resource_type || "—"}
+                    {row.resource_id ? ` · ${row.resource_id.slice(0, 8)}` : ""}
+                  </td>
+                </tr>
+              ))}
+              {audit.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-2 py-4 text-sm text-ink-400">
+                    No activity yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Panel>
+      )}
+
+      {selected && (
+        <ModalShell
+          title={selected.full_name}
+          onClose={() => {
+            setSelected(null);
+            setResetMode(false);
+          }}
+        >
+          <p className="text-sm text-ink-500">{selected.email}</p>
+          <p className="mt-1 text-xs text-ink-400">{selected.membership_count} workspace memberships</p>
+
+          {!resetMode ? (
+            <div className="mt-5 space-y-3">
+              <div className="rounded-xl border border-ink-100 p-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-ink-900">{o.name}</p>
-                    <p className="text-xs text-ink-500">{o.slug}</p>
-                    <div className="mt-1 flex gap-1">
-                      <span
-                        className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${
-                          o.is_personal ? "bg-brand-50 text-brand-700" : "bg-sky-50 text-sky-700"
-                        }`}
-                      >
-                        {o.is_personal ? "Personal" : "Org"}
-                      </span>
-                      <span
-                        className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${
-                          o.is_active ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-500"
-                        }`}
-                      >
-                        {o.is_active ? "Active" : "Disabled"}
-                      </span>
-                    </div>
+                    <p className="text-sm font-semibold text-ink-900">Account status</p>
+                    <p className="text-xs text-ink-500">Disabled users cannot sign in.</p>
                   </div>
                   <button
                     type="button"
                     className="btn-ghost px-3 py-1.5 text-xs"
-                    disabled={busyId === `org-${o.id}`}
-                    onClick={() => toggleOrg(o)}
+                    disabled={busy || selected.id === user.id}
+                    onClick={() => onToggleActive(selected)}
                   >
-                    {o.is_active ? "Disable" : "Enable"}
+                    {selected.is_active ? "Disable" : "Enable"}
                   </button>
-                </li>
-              ))}
-            </ul>
-          </Panel>
+                </div>
+              </div>
 
-          <Panel title="Recent audit">
-            <div className="max-h-80 overflow-y-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-ink-100 text-ink-500">
-                    <th className="px-2 py-2 font-medium">Action</th>
-                    <th className="px-2 py-2 font-medium">Resource</th>
-                    <th className="px-2 py-2 font-medium">When</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {audit.map((row) => (
-                    <tr key={row.id} className="border-b border-ink-50">
-                      <td className="px-2 py-2 font-medium text-ink-800">{row.action}</td>
-                      <td className="px-2 py-2 text-xs text-ink-500">
-                        {row.resource_type || "—"}
-                        {row.resource_id ? ` · ${row.resource_id.slice(0, 8)}` : ""}
-                      </td>
-                      <td className="px-2 py-2 text-xs text-ink-500">
-                        {new Date(row.created_at).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                  {audit.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="px-2 py-4 text-sm text-ink-400">
-                        No audit events yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <div className="rounded-xl border border-ink-100 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-ink-900">Email verified</p>
+                    <p className="text-xs text-ink-500">Mark verified without sending email.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-ghost px-3 py-1.5 text-xs"
+                    disabled={busy}
+                    onClick={() =>
+                      patchUser(
+                        selected,
+                        { is_email_verified: !selected.is_email_verified },
+                        selected.is_email_verified ? "Marked unverified." : "Marked verified.",
+                      )
+                    }
+                  >
+                    {selected.is_email_verified ? "Mark unverified" : "Mark verified"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-ink-100 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-ink-900">Platform admin</p>
+                    <p className="text-xs text-ink-500">Full system access (not an org role).</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-ghost px-3 py-1.5 text-xs"
+                    disabled={busy || (selected.id === user.id && selected.is_platform_admin)}
+                    onClick={() =>
+                      patchUser(
+                        selected,
+                        { is_platform_admin: !selected.is_platform_admin },
+                        selected.is_platform_admin ? "Admin access removed." : "Admin access granted.",
+                      )
+                    }
+                  >
+                    {selected.is_platform_admin ? "Remove admin" : "Make admin"}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn-primary w-full"
+                onClick={() => {
+                  setResetMode(true);
+                  setResetPassword("");
+                }}
+              >
+                Reset password
+              </button>
             </div>
-          </Panel>
-        </div>
-      </div>
+          ) : (
+            <form onSubmit={onReset} className="mt-5 space-y-3">
+              <Field
+                label="New password"
+                type="password"
+                required
+                minLength={8}
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" className="btn-ghost" onClick={() => setResetMode(false)}>
+                  Back
+                </button>
+                <PrimaryButton type="submit" disabled={busy} className="w-auto">
+                  Save password
+                </PrimaryButton>
+              </div>
+            </form>
+          )}
+        </ModalShell>
+      )}
 
       {showCreate && (
         <ModalShell title="Create user" onClose={() => setShowCreate(false)}>
           <form onSubmit={onCreate} className="space-y-3" noValidate>
             <Field label="Full name" required value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <Field
-              label="Email"
-              type="email"
-              required
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-            />
+            <Field label="Email" type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
             <Field
               label="Password"
               type="password"
@@ -440,37 +540,14 @@ export default function PlatformAdminPage() {
                 onChange={(e) => setNewAdmin(e.target.checked)}
                 className="rounded border-ink-300"
               />
-              Grant platform admin
+              Also grant platform admin
             </label>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" className="btn-ghost" onClick={() => setShowCreate(false)}>
                 Cancel
               </button>
-              <PrimaryButton type="submit" disabled={saving} className="w-auto">
-                {saving ? "Creating…" : "Create"}
-              </PrimaryButton>
-            </div>
-          </form>
-        </ModalShell>
-      )}
-
-      {resetTarget && (
-        <ModalShell title={`Reset password — ${resetTarget.email}`} onClose={() => setResetTarget(null)}>
-          <form onSubmit={onReset} className="space-y-3" noValidate>
-            <Field
-              label="New password"
-              type="password"
-              required
-              minLength={8}
-              value={resetPassword}
-              onChange={(e) => setResetPassword(e.target.value)}
-            />
-            <div className="flex justify-end gap-2 pt-2">
-              <button type="button" className="btn-ghost" onClick={() => setResetTarget(null)}>
-                Cancel
-              </button>
-              <PrimaryButton type="submit" disabled={saving} className="w-auto">
-                {saving ? "Saving…" : "Reset password"}
+              <PrimaryButton type="submit" disabled={busy} className="w-auto">
+                {busy ? "Creating…" : "Create"}
               </PrimaryButton>
             </div>
           </form>

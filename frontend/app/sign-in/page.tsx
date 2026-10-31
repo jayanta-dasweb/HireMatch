@@ -6,14 +6,14 @@ import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { AuthCard, ErrorText, Field, PageShell, PrimaryButton } from "@/components/ui";
 import { ButtonLoader, FullPageLoader } from "@/components/Loading";
-import { useToast } from "@/components/Toast";
+import { useAlert } from "@/components/AlertModal";
 import { loginUser } from "@/lib/api";
 import { friendlyErrorMessage, isValidEmailFormat } from "@/lib/errors";
 import { clearUserCache } from "@/lib/useCurrentUser";
 
 export default function SignInPage() {
   const router = useRouter();
-  const toast = useToast();
+  const alert = useAlert();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -25,15 +25,18 @@ export default function SignInPage() {
     setError(null);
 
     if (!isValidEmailFormat(email)) {
-      const msg = "Please enter a valid email address (example: name@company.com)";
+      const msg =
+        email.toLowerCase().includes(".local")
+          ? "Emails ending in .local are not allowed. Use admin@hirematch.ai"
+          : "Please enter a valid email address (example: name@company.com)";
       setError(msg);
-      toast.warning(msg, "Invalid email");
+      alert.error(msg, "Invalid email");
       return;
     }
     if (password.length < 8) {
       const msg = "Password must be at least 8 characters.";
       setError(msg);
-      toast.warning(msg, "Invalid password");
+      alert.warning(msg, "Invalid password");
       return;
     }
 
@@ -41,13 +44,13 @@ export default function SignInPage() {
     try {
       clearUserCache();
       await loginUser({ email: email.trim(), password });
-      toast.success("Welcome back.", "Signed in");
+      alert.success("Welcome back. Opening your workspace.", "Signed in");
       setBooting(true);
       router.push("/dashboard");
     } catch (err) {
       const msg = friendlyErrorMessage(err, "Sign in failed");
       setError(msg);
-      toast.error(msg, "Sign in failed");
+      alert.error(msg, "Sign in failed");
       setLoading(false);
     }
   }
@@ -66,7 +69,8 @@ export default function SignInPage() {
             type="email"
             required
             autoComplete="email"
-            placeholder="name@company.com"
+            placeholder="admin@hirematch.ai"
+            error={Boolean(error)}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -76,6 +80,7 @@ export default function SignInPage() {
             required
             minLength={8}
             autoComplete="current-password"
+            error={Boolean(error)}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />

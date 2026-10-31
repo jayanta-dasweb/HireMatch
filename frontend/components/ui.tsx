@@ -31,12 +31,18 @@ export function AuthCard({
 
 export function Field({
   label,
+  error,
   ...props
-}: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
+}: { label: string; error?: boolean } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="block text-sm font-medium text-ink-700">
       {label}
-      <input className="admin-input" {...props} />
+      <input
+        className={`admin-input ${
+          error ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100" : ""
+        }`}
+        {...props}
+      />
     </label>
   );
 }
@@ -55,5 +61,12 @@ export function PrimaryButton({
 
 export function ErrorText({ message }: { message: string | null }) {
   if (!message) return null;
-  return <p className="text-sm font-medium text-rose-600">{message}</p>;
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm text-rose-800">
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-600 text-[11px] font-bold text-white">
+        !
+      </span>
+      <p className="font-medium leading-relaxed">{message}</p>
+    </div>
+  );
 }

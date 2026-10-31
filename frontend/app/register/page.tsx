@@ -6,14 +6,14 @@ import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { AuthCard, ErrorText, Field, PageShell, PrimaryButton } from "@/components/ui";
 import { ButtonLoader, FullPageLoader } from "@/components/Loading";
-import { useToast } from "@/components/Toast";
+import { useAlert } from "@/components/AlertModal";
 import { loginUser, registerUser } from "@/lib/api";
 import { friendlyErrorMessage, isValidEmailFormat } from "@/lib/errors";
 import { clearUserCache } from "@/lib/useCurrentUser";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const toast = useToast();
+  const alert = useAlert();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,19 +28,21 @@ export default function RegisterPage() {
     if (!fullName.trim()) {
       const msg = "Please enter your full name.";
       setError(msg);
-      toast.warning(msg);
+      alert.warning(msg);
       return;
     }
     if (!isValidEmailFormat(email)) {
-      const msg = "Please enter a valid email address (example: name@company.com)";
+      const msg = email.toLowerCase().includes(".local")
+        ? "Emails ending in .local are not allowed. Use a normal domain like company.com"
+        : "Please enter a valid email address (example: name@company.com)";
       setError(msg);
-      toast.warning(msg, "Invalid email");
+      alert.error(msg, "Invalid email");
       return;
     }
     if (password.length < 8) {
       const msg = "Password must be at least 8 characters.";
       setError(msg);
-      toast.warning(msg, "Invalid password");
+      alert.warning(msg, "Invalid password");
       return;
     }
 
@@ -49,13 +51,13 @@ export default function RegisterPage() {
       clearUserCache();
       await registerUser({ email: email.trim(), password, full_name: fullName.trim() });
       await loginUser({ email: email.trim(), password });
-      toast.success("Your workspace is ready.", "Account created");
+      alert.success("Your workspace is ready.", "Account created");
       setBooting(true);
       router.push("/dashboard");
     } catch (err) {
       const msg = friendlyErrorMessage(err, "Registration failed");
       setError(msg);
-      toast.error(msg, "Could not create account");
+      alert.error(msg, "Could not create account");
     } finally {
       setLoading(false);
     }
@@ -76,6 +78,7 @@ export default function RegisterPage() {
             type="email"
             required
             placeholder="name@company.com"
+            error={Boolean(error)}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -84,6 +87,7 @@ export default function RegisterPage() {
             type="password"
             required
             minLength={8}
+            error={Boolean(error)}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />

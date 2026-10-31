@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Manrope } from "next/font/google";
-import { ToastProvider } from "@/components/Toast";
+import { AlertProvider } from "@/components/AlertModal";
 import "./globals.css";
 
 const sans = Plus_Jakarta_Sans({
@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${sans.variable} ${display.variable} font-sans antialiased`}>
-        <ToastProvider>{children}</ToastProvider>
+        <AlertProvider>{children}</AlertProvider>
       </body>
     </html>
   );

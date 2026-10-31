@@ -140,7 +140,7 @@ export default function PlatformAdminPage() {
           is_active: true,
           page_size: 100,
         }),
-        fetchPermissions({ is_active: true, page_size: 200 }),
+        fetchPermissions({ is_active: true, page_size: 100 }),
       ]);
       setRoles(r.items);
       setAllPerms(p.items);

@@ -6,7 +6,9 @@ import {
   IconBriefcase,
   IconFile,
   IconHome,
+  IconKey,
   IconSettings,
+  IconShield,
   IconUsers,
 } from "@/components/admin/icons";
 
@@ -23,8 +25,8 @@ const links: NavItem[] = [
   { href: "/dashboard/resumes", label: "Resumes", icon: IconFile, soon: true },
   { href: "/dashboard/jobs", label: "Jobs", icon: IconBriefcase, soon: true },
   { href: "/dashboard/team", label: "Team", icon: IconUsers },
-  { href: "/dashboard/admin", label: "Platform Admin", icon: IconSettings, adminOnly: true },
-  { href: "/dashboard/admin/rbac", label: "Access Control", icon: IconUsers, adminOnly: true },
+  { href: "/dashboard/admin", label: "Platform Admin", icon: IconShield, adminOnly: true },
+  { href: "/dashboard/admin/rbac", label: "Access Control", icon: IconKey, adminOnly: true },
   { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
 ];
 

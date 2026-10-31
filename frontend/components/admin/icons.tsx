@@ -47,6 +47,26 @@ export function IconSettings({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+/** Platform / system control — distinct from Settings gear. */
+export function IconShield({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6l-7-3Z" />
+      <path d="M9.5 12.5 11 14l3.5-3.5" />
+    </svg>
+  );
+}
+
+/** Roles & permissions / Access Control. */
+export function IconKey({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="8" cy="15" r="4" />
+      <path d="M11.5 12.5 20 4M17 7l2.5 2.5M15 9l2.5 2.5" />
+    </svg>
+  );
+}
+
 export function IconMenu({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">

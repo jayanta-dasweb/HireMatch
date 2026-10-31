@@ -111,6 +111,27 @@ export async function logoutUser() {
 
 export const fetchMe = () => apiFetch<UserMe>("/users/me", {}, true);
 
+export type OrganizationOut = {
+  id: string;
+  name: string;
+  slug: string;
+  is_personal: boolean;
+  is_active: boolean;
+  created_at: string;
+};
+
+export function createOrganization(body: { name: string; slug?: string }) {
+  return apiFetch<OrganizationOut>("/organizations", { method: "POST", body: JSON.stringify(body) }, true);
+}
+
+export function acceptOrganizationInvite(orgId: string, token: string) {
+  return apiFetch<{ user_id: string; email: string; full_name: string; role: string }>(
+    `/organizations/${orgId}/invitations/accept`,
+    { method: "POST", body: JSON.stringify({ token }) },
+    true,
+  );
+}
+
 export const verifyEmail = (token: string) =>
   apiFetch<{ message: string }>("/auth/verify-email", {
     method: "POST",

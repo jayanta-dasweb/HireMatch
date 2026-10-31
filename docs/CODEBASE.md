@@ -46,6 +46,21 @@ Brand colors: teal `brand-*` + slate `ink-*` on `surface-muted`.
 | UI page | `frontend/app/.../page.tsx` |
 | Shared look | `frontend/components/ui.tsx` |
 
+## Multi-tenant SaaS (organizations)
+
+- One **organization** has many **users** via `organization_members`.
+- One **user** can belong to many organizations.
+- Register creates a personal workspace; **Create organization** makes a team org (`org_admin`).
+- Invites: Team → invite → `/accept-invite?token=…&org=…`.
+- Active org is stored in `localStorage` (`hirematch_active_org`) and switched from the top bar (`lib/orgContext.tsx`).
+- Org-scoped data/APIs always take `organization_id` and use `require_membership` / `require_permission`.
+
+| Task | Edit |
+|------|------|
+| Create / list orgs | `services/organizations.py` + `api/v1/organizations.py` + Overview “Create organization” |
+| Active org switcher | `lib/orgContext.tsx` + `components/admin/Topbar.tsx` |
+| Accept invite | `app/accept-invite/page.tsx` |
+
 ## Master-driven ops
 
 Platform Admin (`/dashboard/admin` + `/api/v1/admin/*`) is the control plane for users, orgs, admin flags, verify, password reset, and audit. Operators should not need raw SQL for day-to-day work. Do **not** put secrets/SMTP/Docker/migrations into the UI.

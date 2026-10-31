@@ -10,6 +10,11 @@ export function clearUserCache() {
   cachedUser = null;
 }
 
+/** Force next useCurrentUser consumers to refetch /users/me. */
+export function invalidateUserCache() {
+  cachedUser = null;
+}
+
 export function useCurrentUser() {
   const router = useRouter();
   const [user, setUser] = useState<UserMe | null>(cachedUser);

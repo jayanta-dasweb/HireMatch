@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Topbar } from "@/components/admin/Topbar";
 import { logoutUser } from "@/lib/api";
+import { clearActiveOrg } from "@/lib/orgContext";
 import { clearUserCache } from "@/lib/useCurrentUser";
 
 export function AdminShell({
@@ -26,6 +27,7 @@ export function AdminShell({
   async function onLogout() {
     await logoutUser();
     clearUserCache();
+    clearActiveOrg();
     router.push("/sign-in");
   }
 

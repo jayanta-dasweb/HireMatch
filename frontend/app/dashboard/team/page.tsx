@@ -9,6 +9,7 @@ import { SearchableSelect } from "@/components/SearchableSelect";
 import { Field, PrimaryButton } from "@/components/ui";
 import { Membership } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
+import { useOrg } from "@/lib/orgContext";
 import { clearUserCache, useCurrentUser } from "@/lib/useCurrentUser";
 import {
   OrgMember,
@@ -31,7 +32,8 @@ function can(m: Membership | undefined, code: string) {
 export default function TeamPage() {
   const alert = useAlert();
   const { user, loading } = useCurrentUser();
-  const [orgId, setOrgId] = useState<string>("");
+  const { activeOrgId, setActiveOrgId, memberships } = useOrg();
+  const orgId = activeOrgId || "";
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [roles, setRoles] = useState<RbacRole[]>([]);
   const [permissions, setPermissions] = useState<RbacPermission[]>([]);
@@ -74,12 +76,6 @@ export default function TeamPage() {
   }
 
   useEffect(() => {
-    if (!user) return;
-    const first = user.memberships[0]?.organization_id || "";
-    setOrgId((prev) => prev || first);
-  }, [user]);
-
-  useEffect(() => {
     if (!user || !orgId) return;
     reload(orgId).catch((err) => alert.error(friendlyErrorMessage(err, "Failed to load team")));
   }, [user, orgId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -92,8 +88,8 @@ export default function TeamPage() {
       setInviteEmail("");
       alert.success(
         res.invite_token
-          ? `Invite sent. Dev token: ${res.invite_token}`
-          : "Invitation created.",
+          ? `Invite sent. Dev link: /accept-invite?token=${res.invite_token}&org=${orgId}`
+          : "Invitation created. The invitee will get an email link.",
         "Invite sent",
       );
       await reload(orgId);
@@ -177,18 +173,18 @@ export default function TeamPage() {
           <p className="mt-1 text-sm text-ink-500">Members, invites, and organization roles.</p>
         </div>
         <label className="text-sm font-medium text-ink-700">
-          Workspace
-          <select
-            className="admin-input mt-1 min-w-[220px]"
+          Active organization
+          <SearchableSelect
+            className="mt-1 min-w-[240px]"
             value={orgId}
-            onChange={(e) => setOrgId(e.target.value)}
-          >
-            {user.memberships.map((m) => (
-              <option key={m.organization_id} value={m.organization_id}>
-                {m.organization_name} ({m.role})
-              </option>
-            ))}
-          </select>
+            onChange={setActiveOrgId}
+            searchPlaceholder="Filter workspaces…"
+            options={memberships.map((m) => ({
+              value: m.organization_id,
+              label: `${m.organization_name} (${m.role})`,
+              keywords: m.organization_slug,
+            }))}
+          />
         </label>
       </div>
 

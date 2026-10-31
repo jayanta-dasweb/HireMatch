@@ -5,6 +5,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { Panel } from "@/components/admin/StatCard";
 import { DashboardSkeleton } from "@/components/Loading";
 import { useAlert } from "@/components/AlertModal";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { Field, PrimaryButton } from "@/components/ui";
 import { Membership } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
@@ -210,18 +211,18 @@ export default function TeamPage() {
                     </td>
                     <td className="px-2 py-3">
                       {canManageMembers ? (
-                        <select
-                          className="admin-input py-1.5 text-xs"
+                        <SearchableSelect
+                          className="min-w-[160px]"
                           value={m.role}
                           disabled={busy || m.user_id === user.id}
-                          onChange={(e) => onChangeRole(m, e.target.value)}
-                        >
-                          {assignableRoles.map((r) => (
-                            <option key={r.id} value={r.slug}>
-                              {r.name}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(slug) => onChangeRole(m, slug)}
+                          searchPlaceholder="Filter roles…"
+                          options={assignableRoles.map((r) => ({
+                            value: r.slug,
+                            label: r.name,
+                            keywords: r.slug,
+                          }))}
+                        />
                       ) : (
                         <span className="capitalize text-ink-700">{m.role.replaceAll("_", " ")}</span>
                       )}
@@ -246,17 +247,17 @@ export default function TeamPage() {
                 />
                 <label className="block text-sm font-medium text-ink-700">
                   Role
-                  <select
-                    className="admin-input"
+                  <SearchableSelect
+                    className="mt-1"
                     value={inviteRoleSlug}
-                    onChange={(e) => setInviteRoleSlug(e.target.value)}
-                  >
-                    {assignableRoles.map((r) => (
-                      <option key={r.id} value={r.slug}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setInviteRoleSlug}
+                    searchPlaceholder="Filter roles…"
+                    options={assignableRoles.map((r) => ({
+                      value: r.slug,
+                      label: r.name,
+                      keywords: r.slug,
+                    }))}
+                  />
                 </label>
                 <PrimaryButton type="submit" disabled={busy}>
                   {busy ? "Sending…" : "Send invite"}

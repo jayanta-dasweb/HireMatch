@@ -8,6 +8,7 @@ import { Panel, StatCard } from "@/components/admin/StatCard";
 import { IconBriefcase, IconUsers } from "@/components/admin/icons";
 import { DashboardSkeleton } from "@/components/Loading";
 import { useAlert } from "@/components/AlertModal";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { Field, PrimaryButton } from "@/components/ui";
 import {
   AdminHealth,
@@ -100,6 +101,7 @@ export default function PlatformAdminPage() {
   const [roleDraft, setRoleDraft] = useState<Record<string, string>>({});
   const [specialDraft, setSpecialDraft] = useState<Record<string, string[]>>({});
   const [accessOrgId, setAccessOrgId] = useState<string | null>(null);
+  const [permSearch, setPermSearch] = useState("");
 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -636,21 +638,20 @@ export default function PlatformAdminPage() {
                 <>
                   <label className="block text-xs font-semibold text-ink-600">
                     Organization
-                    <select
-                      className="admin-input mt-1"
+                    <SearchableSelect
+                      className="mt-1"
                       value={accessOrgId || ""}
-                      onChange={(e) => {
-                        const oid = e.target.value;
+                      onChange={(oid) => {
                         setAccessOrgId(oid);
                         void loadAccessCatalog(oid);
                       }}
-                    >
-                      {detail.memberships.map((m) => (
-                        <option key={m.organization_id} value={m.organization_id}>
-                          {m.organization_name} ({m.organization_slug})
-                        </option>
-                      ))}
-                    </select>
+                      searchPlaceholder="Search organizations…"
+                      options={detail.memberships.map((m) => ({
+                        value: m.organization_id,
+                        label: `${m.organization_name} (${m.organization_slug})`,
+                        keywords: m.organization_slug,
+                      }))}
+                    />
                   </label>
 
                   {detail.memberships
@@ -663,22 +664,23 @@ export default function PlatformAdminPage() {
                             Base permissions come from this role. Current: {m.role}
                           </p>
                           <div className="mt-3 flex flex-wrap items-end gap-2">
-                            <select
-                              className="admin-input flex-1"
+                            <SearchableSelect
+                              className="min-w-0 flex-1"
                               value={roleDraft[m.organization_id] || ""}
-                              onChange={(e) =>
+                              onChange={(v) =>
                                 setRoleDraft((prev) => ({
                                   ...prev,
-                                  [m.organization_id]: e.target.value,
+                                  [m.organization_id]: v,
                                 }))
                               }
-                            >
-                              {roles.map((r) => (
-                                <option key={r.id} value={r.id}>
-                                  {r.name} ({r.slug}){r.is_system ? "" : " · custom"}
-                                </option>
-                              ))}
-                            </select>
+                              placeholder="Search or select a role…"
+                              searchPlaceholder="Type to filter roles…"
+                              options={roles.map((r) => ({
+                                value: r.id,
+                                label: `${r.name} (${r.slug})${r.is_system ? "" : " · custom"}`,
+                                keywords: `${r.slug} ${r.description || ""}`,
+                              }))}
+                            />
                             <button
                               type="button"
                               className="btn-primary px-4 py-2 text-xs"
@@ -700,8 +702,24 @@ export default function PlatformAdminPage() {
                           <p className="mt-0.5 text-xs text-ink-500">
                             Extra grants for this user only (on top of the role).
                           </p>
-                          <div className="mt-3 max-h-48 space-y-1.5 overflow-y-auto">
-                            {allPerms.map((p) => {
+                          <input
+                            className="admin-input mt-3"
+                            placeholder="Search permissions…"
+                            value={permSearch}
+                            onChange={(e) => setPermSearch(e.target.value)}
+                          />
+                          <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto">
+                            {allPerms
+                              .filter((p) => {
+                                const q = permSearch.trim().toLowerCase();
+                                if (!q) return true;
+                                return (
+                                  p.code.toLowerCase().includes(q) ||
+                                  p.name.toLowerCase().includes(q) ||
+                                  (p.group || "").toLowerCase().includes(q)
+                                );
+                              })
+                              .map((p) => {
                               const checked = (specialDraft[m.organization_id] || []).includes(p.code);
                               const fromRole = m.role_permissions.includes(p.code);
                               return (

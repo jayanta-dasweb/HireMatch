@@ -8,9 +8,9 @@
 
 ### Product Phase 2 — Slice C (Free local structured extract + review)
 - [x] `resume_extractions` table + migration `0008_resume_extractions`
-- [x] Local `local_v1` extractor (regex contact + skill lexicon + section blocks) — no paid LLM
-- [x] Celery runs structure after text extract; GET/PATCH extraction APIs
-- [x] Resumes UI structured panel with edit/save review
+- [x] In-house `hirematch_local_v2` analysis engine (no external AI APIs): contact, skills+evidence, roles, education, ATS score, findings
+- [x] Celery runs analysis after text extract; GET/PATCH extraction APIs
+- [x] Resumes UI analysis scorecard + roles/findings + edit/save review
 - [x] Honest empty state when nothing found in text
 
 ### Product Phase 2 — Slice B (Celery parse + malware hook)
@@ -63,7 +63,7 @@
 ## Test results (after production hardening)
 
 ```text
-22 passed in 17.56s
+24 passed in 17.67s
 ```
 
 Production images built successfully: `hirematch-api:prod`, `hirematch-web:prod`.

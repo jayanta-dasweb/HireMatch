@@ -37,6 +37,7 @@ export type ExtractionStatus = "pending" | "ready" | "failed" | "reviewed";
 
 export type StructuredPayload = {
   extractor?: string;
+  analyzer?: string;
   contact?: {
     emails?: string[];
     phones?: string[];
@@ -45,8 +46,44 @@ export type StructuredPayload = {
     github?: string[];
   };
   skills?: string[];
+  skills_detailed?: { name: string; mentions: number; evidence: string[] }[];
+  soft_skills?: { name: string; evidence: string[] }[];
   experience_sections?: string[];
   education_sections?: string[];
+  summary?: string | null;
+  roles?: {
+    title?: string | null;
+    company?: string | null;
+    dates?: { start?: string; end?: string } | null;
+    bullets?: string[];
+    evidence?: string;
+  }[];
+  education_entries?: {
+    degree?: string | null;
+    school?: string | null;
+    dates?: { start?: string; end?: string } | null;
+    evidence?: string;
+  }[];
+  projects?: string[];
+  certifications?: string[];
+  metrics?: {
+    char_count?: number;
+    word_count?: number;
+    line_count?: number;
+    estimated_pages?: number;
+  };
+  ats?: {
+    score?: number;
+    passed?: number;
+    total?: number;
+    checks?: { id: string; label: string; pass: boolean; weight: number }[];
+  };
+  action_verbs?: {
+    strong_bullet_starts?: number;
+    top_verbs?: { verb: string; count: number }[];
+  };
+  findings?: { severity: string; code: string; message: string }[];
+  section_coverage?: Record<string, boolean>;
 };
 
 export type ResumeExtraction = {

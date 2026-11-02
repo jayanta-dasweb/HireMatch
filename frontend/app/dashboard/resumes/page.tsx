@@ -410,9 +410,10 @@ export default function ResumesPage() {
             </Panel>
 
             {selected && (
-              <Panel title="Structured data">
+              <Panel title="In-house analysis">
                 <p className="mb-3 text-sm text-ink-500">
-                  Local extraction (free) — review and edit. We only show what we found in the file.
+                  HireMatch local engine (free, no external AI APIs) — evidence from your file only. Review and edit
+                  below.
                   {extraction ? (
                     <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-600 bg-ink-100">
                       {extraction.status} · {extraction.extractor}
@@ -421,10 +422,10 @@ export default function ResumesPage() {
                 </p>
 
                 {!extraction && selected.status === "ready" && (
-                  <p className="text-sm text-ink-400">No structured extraction yet — try re-uploading.</p>
+                  <p className="text-sm text-ink-400">No analysis yet — re-upload to run the local engine.</p>
                 )}
                 {!extraction && (selected.status === "processing" || selected.status === "uploaded") && (
-                  <p className="text-sm text-ink-400">Waiting for local structure…</p>
+                  <p className="text-sm text-ink-400">Waiting for analysis…</p>
                 )}
 
                 {extraction?.error && (
@@ -433,12 +434,98 @@ export default function ResumesPage() {
                   </p>
                 )}
 
-                {extraction && !hasStructure && extraction.status !== "failed" && (
+                {extraction && draft.ats && (
+                  <div className="mb-4 rounded-xl border border-ink-100 bg-surface-muted p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">ATS-style score</p>
+                    <p className="mt-1 font-display text-3xl font-bold text-ink-950">
+                      {draft.ats.score ?? 0}
+                      <span className="text-base font-medium text-ink-500">/100</span>
+                    </p>
+                    <p className="mt-1 text-xs text-ink-500">
+                      {draft.ats.passed}/{draft.ats.total} checks · {draft.metrics?.word_count ?? 0} words · ~
+                      {draft.metrics?.estimated_pages ?? "?"} pages
+                    </p>
+                    <ul className="mt-3 grid gap-1 sm:grid-cols-2">
+                      {(draft.ats.checks || []).map((c) => (
+                        <li key={c.id} className="text-xs text-ink-700">
+                          <span className={c.pass ? "text-brand-700" : "text-rose-600"}>
+                            {c.pass ? "Pass" : "Miss"}
+                          </span>{" "}
+                          {c.label}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {extraction && (draft.findings || []).length > 0 && (
+                  <ul className="mb-4 space-y-2">
+                    {(draft.findings || []).map((f) => (
+                      <li
+                        key={f.code + f.message.slice(0, 24)}
+                        className={`rounded-xl border px-3 py-2 text-sm ${
+                          f.severity === "gap"
+                            ? "border-rose-200 bg-rose-50 text-rose-900"
+                            : f.severity === "strength"
+                              ? "border-brand-200 bg-brand-50 text-brand-900"
+                              : "border-ink-100 bg-white text-ink-700"
+                        }`}
+                      >
+                        {f.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {extraction && (draft.roles || []).length > 0 && (
+                  <div className="mb-4">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Parsed roles</p>
+                    <ul className="space-y-3">
+                      {(draft.roles || []).map((r, idx) => (
+                        <li key={idx} className="rounded-xl border border-ink-100 p-3 text-sm">
+                          <p className="font-semibold text-ink-900">
+                            {r.title || "Role"}
+                            {r.company ? ` · ${r.company}` : ""}
+                          </p>
+                          {r.dates && (
+                            <p className="text-xs text-ink-500">
+                              {r.dates.start} – {r.dates.end}
+                            </p>
+                          )}
+                          {(r.bullets || []).length > 0 && (
+                            <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-ink-700">
+                              {(r.bullets || []).slice(0, 6).map((b, i) => (
+                                <li key={i}>{b}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {extraction && (draft.education_entries || []).length > 0 && (
+                  <div className="mb-4">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Education</p>
+                    <ul className="space-y-2">
+                      {(draft.education_entries || []).map((e, idx) => (
+                        <li key={idx} className="text-sm text-ink-800">
+                          <span className="font-medium">{e.degree || e.school}</span>
+                          {e.degree && e.school ? ` · ${e.school}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {extraction && !hasStructure && extraction.status !== "failed" && !(draft.findings || []).length && (
                   <p className="mb-3 text-sm text-ink-400">Nothing found in text for contact/skills/sections.</p>
                 )}
 
                 {extraction && (
-                  <div className="space-y-3">
+                  <div className="space-y-3 border-t border-ink-50 pt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Editable review</p>
                     <Field
                       label="Emails (comma-separated)"
                       value={(contact.emails || []).join(", ")}
@@ -480,7 +567,7 @@ export default function ResumesPage() {
                       onChange={(e) => setSkillsText(e.target.value)}
                     />
                     <label className="block text-sm font-medium text-ink-700">
-                      Experience sections (one block; edit raw text)
+                      Experience sections (raw)
                       <textarea
                         className="admin-input mt-1 min-h-[6rem]"
                         disabled={!canEdit}
@@ -497,7 +584,7 @@ export default function ResumesPage() {
                       />
                     </label>
                     <label className="block text-sm font-medium text-ink-700">
-                      Education sections
+                      Education sections (raw)
                       <textarea
                         className="admin-input mt-1 min-h-[5rem]"
                         disabled={!canEdit}

@@ -25,10 +25,9 @@
 - [ ] Versioning workflow (re-upload new versions) — later
 
 ### Slice C — Free local structured extract + review
-- [x] Local deterministic structure (`local_v1`) + review UI
-- [ ] Optional: larger skill lexicon / spaCy later
+- [x] Local deterministic structure + in-house deep analysis (`hirematch_local_v2`) + review UI
+- [ ] Optional: embed open-weight model inside Docker later (still no external API)
 - [ ] Real malware engine (e.g. ClamAV) behind the hook
-- [ ] Cloud/local LLM structured extract (only when keys/hardware available; never invent)
 
 ## Phase 3 — Job Intelligence
 

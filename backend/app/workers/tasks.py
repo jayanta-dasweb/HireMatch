@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from app.db.session import SessionLocal
 from app.models import ExtractionStatus, ResumeDocument, ResumeStatus, ResumeVersion
-from app.services import malware_scan, resume_parse, resume_storage, resume_structure
+from app.services import malware_scan, resume_analysis, resume_parse, resume_storage
 from app.services.resume_extractions import upsert_extraction
 from app.workers.celery_app import celery
 
@@ -73,7 +73,7 @@ def process_resume_version(self, document_id: str, version_id: str) -> dict:
             return {"ok": False, "reason": "parse_failed"}
 
         try:
-            payload = resume_structure.extract_structure(text)
+            payload = resume_analysis.analyze_resume(text)
             upsert_extraction(
                 db,
                 document=doc,
@@ -81,20 +81,29 @@ def process_resume_version(self, document_id: str, version_id: str) -> dict:
                 payload=payload,
                 status=ExtractionStatus.ready,
                 error=None,
-                extractor=resume_structure.EXTRACTOR_ID,
+                extractor=resume_analysis.ANALYZER_ID,
             )
         except Exception as exc:  # noqa: BLE001
             upsert_extraction(
                 db,
                 document=doc,
                 version_id=version.id,
-                payload={"extractor": resume_structure.EXTRACTOR_ID, "contact": {}, "skills": [], "experience_sections": [], "education_sections": []},
+                payload={
+                    "extractor": resume_analysis.ANALYZER_ID,
+                    "analyzer": resume_analysis.ANALYZER_ID,
+                    "contact": {},
+                    "skills": [],
+                    "experience_sections": [],
+                    "education_sections": [],
+                    "findings": [],
+                    "ats": {"score": 0, "checks": [], "passed": 0, "total": 0},
+                },
                 status=ExtractionStatus.failed,
                 error=str(exc).replace("\x00", "")[:2000],
-                extractor=resume_structure.EXTRACTOR_ID,
+                extractor=resume_analysis.ANALYZER_ID,
             )
             # Document remains ready — text extract succeeded
-            logger.exception("Structured extract failed for %s", document_id)
+            logger.exception("Resume analysis failed for %s", document_id)
 
         db.commit()
         return {"ok": True, "status": "ready"}

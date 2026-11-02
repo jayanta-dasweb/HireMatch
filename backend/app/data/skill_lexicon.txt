@@ -3,67 +3,132 @@ Java
 JavaScript
 TypeScript
 React
+React Native
 Next.js
 Node.js
+Express
+NestJS
 Django
 FastAPI
 Flask
+Spring
+Spring Boot
 SQL
 PostgreSQL
 MySQL
+SQLite
 MongoDB
 Redis
+Elasticsearch
+Cassandra
+DynamoDB
 Docker
 Kubernetes
 AWS
 Azure
 GCP
+S3
+EC2
+Lambda
 Git
+GitHub
+GitLab
 Linux
+Bash
 HTML
 CSS
+Sass
 Tailwind
+Bootstrap
 GraphQL
 REST
+gRPC
 Celery
+RabbitMQ
+Kafka
 Pandas
 NumPy
+Scikit-learn
 TensorFlow
 PyTorch
 Machine Learning
+Deep Learning
+NLP
+Computer Vision
 Data Analysis
+Data Engineering
+ETL
 Excel
 Power BI
 Tableau
+Looker
 Salesforce
+HubSpot
 Jira
+Confluence
 Agile
 Scrum
+Kanban
 C++
 C#
+.NET
 Go
 Rust
 PHP
 Laravel
+Symfony
 Ruby
 Rails
 Swift
 Kotlin
 Android
 iOS
+Flutter
 Selenium
+Cypress
 Playwright
+Jest
+Pytest
 CI/CD
+Jenkins
+GitHub Actions
 Terraform
 Ansible
+Pulumi
 Nginx
-Elasticsearch
+Apache
 Spark
 Hadoop
-Kafka
 Airflow
+dbt
+Snowflake
+BigQuery
 Figma
 UI/UX
-Communication
-Leadership
+Microservices
+System Design
+OOP
+TDD
+Clean Architecture
+Observability
+Prometheus
+Grafana
+Sentry
+OpenAPI
+OAuth
+JWT
+SSO
+Webpack
+Vite
+Vue
+Angular
+Svelte
+Redux
+Zustand
+Prisma
+SQLAlchemy
+Hibernate
 Project Management
+Product Management
+Stakeholder Management
+Technical Writing

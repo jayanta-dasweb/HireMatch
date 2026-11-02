@@ -243,9 +243,11 @@ def test_resume_extraction_and_review(client, unique_email):
     )
     assert extraction.status_code == 200, extraction.text
     body = extraction.json()
-    assert body["extractor"] == "local_v1"
+    assert body["extractor"] == "hirematch_local_v2"
     assert body["status"] == "ready"
     assert "Python" in (body["effective_payload"].get("skills") or [])
+    assert isinstance(body["effective_payload"].get("ats"), dict)
+    assert "score" in body["effective_payload"]["ats"]
 
     reviewed = {
         **body["effective_payload"],

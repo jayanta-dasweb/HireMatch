@@ -42,7 +42,8 @@ Brand colors: teal `brand-*` + slate `ink-*` on `surface-muted`.
 | New API endpoint | `api/v1/*.py` + maybe `schemas/` + `services/` |
 | Auth / password | `services/auth.py` |
 | Org / invites | `services/organizations.py` |
-| Resumes (upload/parse) | `services/resumes.py` + `resume_storage.py` + `resume_parse.py` + `malware_scan.py` + `api/v1/resumes.py` + `workers/tasks.py` + `frontend/lib/resumesApi.ts` + `app/dashboard/resumes` |
+| Resumes (upload/parse) | `services/resumes.py` + `resume_storage.py` + `resume_parse.py` + `malware_scan.py` + `resume_structure.py` + `resume_extractions.py` + `api/v1/resumes.py` + `workers/tasks.py` + `frontend/lib/resumesApi.ts` + `app/dashboard/resumes` |
+| Skill lexicon | `backend/app/data/skill_lexicon.txt` |
 | Background jobs | `workers/celery_app.py` + Compose `worker` service |
 | Env settings | `core/config.py` + `.env.example` |
 | UI page | `frontend/app/.../page.tsx` |

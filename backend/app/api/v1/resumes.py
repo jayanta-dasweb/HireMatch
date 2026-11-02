@@ -7,7 +7,14 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models import User
-from app.schemas.resume import ResumeDocumentDetailOut, ResumeDocumentOut, ResumeUpdate
+from app.schemas.resume import (
+    ResumeDocumentDetailOut,
+    ResumeDocumentOut,
+    ResumeExtractionOut,
+    ResumeExtractionReview,
+    ResumeUpdate,
+)
+from app.services import resume_extractions as extraction_svc
 from app.services import resumes as resume_svc
 
 router = APIRouter(prefix="/organizations/{org_id}/resumes", tags=["resumes"])
@@ -98,3 +105,34 @@ def download_resume(
         "Content-Disposition": f'attachment; filename="{doc.original_filename}"',
     }
     return Response(content=data, media_type=doc.content_type, headers=headers)
+
+
+@router.get("/{document_id}/extraction", response_model=ResumeExtractionOut)
+def get_extraction(
+    org_id: UUID,
+    document_id: UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = extraction_svc.get_extraction(
+        db, user=user, organization_id=org_id, document_id=document_id
+    )
+    return ResumeExtractionOut(**extraction_svc.extraction_to_dict(row))
+
+
+@router.patch("/{document_id}/extraction", response_model=ResumeExtractionOut)
+def review_extraction(
+    org_id: UUID,
+    document_id: UUID,
+    payload: ResumeExtractionReview,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = extraction_svc.save_review(
+        db,
+        user=user,
+        organization_id=org_id,
+        document_id=document_id,
+        reviewed_payload=payload.reviewed_payload,
+    )
+    return ResumeExtractionOut(**extraction_svc.extraction_to_dict(row))

@@ -29,3 +29,10 @@ class ResumeStatus(str, enum.Enum):
     processing = "processing"
     ready = "ready"
     failed = "failed"
+
+
+class ExtractionStatus(str, enum.Enum):
+    pending = "pending"
+    ready = "ready"
+    failed = "failed"
+    reviewed = "reviewed"

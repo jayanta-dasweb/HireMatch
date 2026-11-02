@@ -1,4 +1,4 @@
-from app.models.enums import InvitationStatus, MemberRole, ResumeStatus, SubscriptionStatus
+from app.models.enums import ExtractionStatus, InvitationStatus, MemberRole, ResumeStatus, SubscriptionStatus
 from app.models.organization import (
     AuditEvent,
     Organization,
@@ -8,7 +8,7 @@ from app.models.organization import (
     SubscriptionPlan,
 )
 from app.models.rbac import Permission, PermissionGroup, Role, RolePermission, UserPermission
-from app.models.resume import ResumeDocument, ResumeVersion
+from app.models.resume import ResumeDocument, ResumeExtraction, ResumeVersion
 from app.models.user import (
     EmailVerificationToken,
     PasswordResetToken,
@@ -20,6 +20,7 @@ from app.models.user import (
 __all__ = [
     "AuditEvent",
     "EmailVerificationToken",
+    "ExtractionStatus",
     "InvitationStatus",
     "MemberRole",
     "Organization",
@@ -30,6 +31,7 @@ __all__ = [
     "PermissionGroup",
     "RefreshToken",
     "ResumeDocument",
+    "ResumeExtraction",
     "ResumeStatus",
     "ResumeVersion",
     "Role",

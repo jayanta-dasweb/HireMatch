@@ -1,9 +1,10 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.enums import ResumeStatus
+from app.models.enums import ExtractionStatus, ResumeStatus
 
 
 class ResumeVersionOut(BaseModel):
@@ -40,3 +41,24 @@ class ResumeDocumentDetailOut(ResumeDocumentOut):
 
 class ResumeUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class ResumeExtractionOut(BaseModel):
+    id: UUID
+    document_id: UUID
+    version_id: UUID
+    organization_id: UUID
+    status: ExtractionStatus
+    payload: dict[str, Any]
+    reviewed_payload: dict[str, Any] | None = None
+    effective_payload: dict[str, Any]
+    extractor: str
+    error: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ResumeExtractionReview(BaseModel):
+    reviewed_payload: dict[str, Any]

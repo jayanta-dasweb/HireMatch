@@ -12,19 +12,33 @@ import { useCan } from "@/lib/permissions";
 import {
   ResumeDocument,
   ResumeDocumentDetail,
+  ResumeExtraction,
+  StructuredPayload,
   deleteResume,
   downloadResume,
   getResume,
+  getResumeExtraction,
   listResumes,
+  saveResumeExtractionReview,
   updateResumeTitle,
   uploadResume,
 } from "@/lib/resumesApi";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
 function statusTone(status: string) {
-  if (status === "ready") return "bg-brand-50 text-brand-700";
+  if (status === "ready" || status === "reviewed") return "bg-brand-50 text-brand-700";
   if (status === "failed") return "bg-rose-50 text-rose-700";
   return "bg-ink-100 text-ink-600";
+}
+
+function emptyPayload(): StructuredPayload {
+  return {
+    extractor: "local_v1",
+    contact: { emails: [], phones: [], links: [], linkedin: [], github: [] },
+    skills: [],
+    experience_sections: [],
+    education_sections: [],
+  };
 }
 
 export default function ResumesPage() {
@@ -42,6 +56,9 @@ export default function ResumesPage() {
   const [title, setTitle] = useState("");
   const [selected, setSelected] = useState<ResumeDocumentDetail | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [extraction, setExtraction] = useState<ResumeExtraction | null>(null);
+  const [draft, setDraft] = useState<StructuredPayload>(emptyPayload());
+  const [skillsText, setSkillsText] = useState("");
 
   const orgId = activeOrgId || "";
 
@@ -54,12 +71,29 @@ export default function ResumesPage() {
     setItems(rows);
   }
 
+  async function loadExtraction(docId: string) {
+    try {
+      const row = await getResumeExtraction(orgId, docId);
+      setExtraction(row);
+      const eff = row.effective_payload || emptyPayload();
+      setDraft({
+        ...emptyPayload(),
+        ...eff,
+        contact: { ...emptyPayload().contact, ...(eff.contact || {}) },
+      });
+      setSkillsText((eff.skills || []).join(", "));
+    } catch {
+      setExtraction(null);
+      setDraft(emptyPayload());
+      setSkillsText("");
+    }
+  }
+
   useEffect(() => {
     if (!user || !orgId) return;
     reload().catch((err) => alert.error(friendlyErrorMessage(err, "Failed to load resumes")));
   }, [user, orgId, canView]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Poll while Celery is still extracting text
   useEffect(() => {
     if (!orgId || !canView) return;
     const processing = items.some((r) => r.status === "processing" || r.status === "uploaded");
@@ -68,7 +102,7 @@ export default function ResumesPage() {
     if (!processing && !selectedProcessing) return;
 
     let ticks = 0;
-    const maxTicks = 30; // ~60s at 2s
+    const maxTicks = 30;
     const id = window.setInterval(() => {
       ticks += 1;
       if (ticks > maxTicks) {
@@ -81,6 +115,7 @@ export default function ResumesPage() {
             const detail = await getResume(orgId, selected.id);
             setSelected(detail);
             setEditTitle(detail.title);
+            if (detail.status === "ready") await loadExtraction(detail.id);
           }
         })
         .catch(() => undefined);
@@ -96,12 +131,18 @@ export default function ResumesPage() {
       const doc = await uploadResume(orgId, file, title || undefined);
       setFile(null);
       setTitle("");
-      alert.success("Resume uploaded. Text extraction runs in the background.", "Uploaded");
+      alert.success("Resume uploaded. Extraction runs in the background.", "Uploaded");
       await reload();
       if (doc?.id) {
         const detail = await getResume(orgId, doc.id);
         setSelected(detail);
         setEditTitle(detail.title);
+        if (detail.status === "ready") await loadExtraction(detail.id);
+        else {
+          setExtraction(null);
+          setDraft(emptyPayload());
+          setSkillsText("");
+        }
       }
     } catch (err) {
       alert.error(friendlyErrorMessage(err, "Upload failed"));
@@ -117,6 +158,12 @@ export default function ResumesPage() {
       const detail = await getResume(orgId, id);
       setSelected(detail);
       setEditTitle(detail.title);
+      if (detail.status === "ready" || detail.status === "failed") await loadExtraction(id);
+      else {
+        setExtraction(null);
+        setDraft(emptyPayload());
+        setSkillsText("");
+      }
     } catch (err) {
       alert.error(friendlyErrorMessage(err, "Could not open resume"));
     } finally {
@@ -139,13 +186,46 @@ export default function ResumesPage() {
     }
   }
 
+  async function onSaveReview() {
+    if (!orgId || !selected || !canEdit || !extraction) return;
+    setBusy(true);
+    try {
+      const payload: StructuredPayload = {
+        ...draft,
+        skills: skillsText
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        contact: {
+          emails: draft.contact?.emails || [],
+          phones: draft.contact?.phones || [],
+          links: draft.contact?.links || [],
+          linkedin: draft.contact?.linkedin || [],
+          github: draft.contact?.github || [],
+        },
+      };
+      const saved = await saveResumeExtractionReview(orgId, selected.id, payload);
+      setExtraction(saved);
+      setDraft(saved.effective_payload);
+      setSkillsText((saved.effective_payload.skills || []).join(", "));
+      alert.success("Review saved.", "Saved");
+    } catch (err) {
+      alert.error(friendlyErrorMessage(err, "Could not save review"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onDelete(id: string) {
     if (!orgId || !canDelete) return;
     if (!window.confirm("Remove this resume from the workspace?")) return;
     setBusy(true);
     try {
       await deleteResume(orgId, id);
-      if (selected?.id === id) setSelected(null);
+      if (selected?.id === id) {
+        setSelected(null);
+        setExtraction(null);
+      }
       await reload();
       alert.success("Resume removed.", "Deleted");
     } catch (err) {
@@ -156,6 +236,16 @@ export default function ResumesPage() {
   }
 
   if (loading || !user) return <DashboardSkeleton />;
+
+  const contact = draft.contact || {};
+  const hasStructure =
+    (contact.emails && contact.emails.length > 0) ||
+    (contact.phones && contact.phones.length > 0) ||
+    (contact.links && contact.links.length > 0) ||
+    (draft.skills && draft.skills.length > 0) ||
+    skillsText.trim().length > 0 ||
+    (draft.experience_sections && draft.experience_sections.length > 0) ||
+    (draft.education_sections && draft.education_sections.length > 0);
 
   return (
     <AdminShell
@@ -168,7 +258,7 @@ export default function ResumesPage() {
         <h1 className="font-display text-2xl font-bold text-ink-950">Resumes</h1>
         <p className="mt-1 text-sm text-ink-500">
           {activeMembership
-            ? `Workspace: ${activeMembership.organization_name}. Upload PDF or DOCX — we extract plain text only (no invented AI fields).`
+            ? `Workspace: ${activeMembership.organization_name}. Plain text + free local structure — only what appears in the file.`
             : "Select a workspace from the top bar."}
         </p>
       </div>
@@ -244,7 +334,7 @@ export default function ResumesPage() {
             </Panel>
           </div>
 
-          <div className="xl:col-span-3">
+          <div className="space-y-4 xl:col-span-3">
             <Panel title={selected ? selected.title : "Details"}>
               {!selected ? (
                 <p className="text-sm text-ink-400">Select a resume to preview extracted text.</p>
@@ -293,7 +383,7 @@ export default function ResumesPage() {
 
                   {(selected.status === "processing" || selected.status === "uploaded") && (
                     <p className="rounded-xl border border-ink-100 bg-surface-muted px-3 py-2 text-sm text-ink-600">
-                      Processing — scanning and extracting plain text. This page refreshes automatically.
+                      Processing — scanning and extracting. This page refreshes automatically.
                     </p>
                   )}
 
@@ -307,7 +397,7 @@ export default function ResumesPage() {
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">
                       Extracted text
                     </p>
-                    <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap rounded-xl border border-ink-100 bg-surface-muted p-3 text-xs text-ink-800">
+                    <pre className="max-h-[16rem] overflow-auto whitespace-pre-wrap rounded-xl border border-ink-100 bg-surface-muted p-3 text-xs text-ink-800">
                       {selected.latest_version?.extracted_text ||
                         selected.versions?.[selected.versions.length - 1]?.extracted_text ||
                         (selected.status === "processing" || selected.status === "uploaded"
@@ -318,6 +408,125 @@ export default function ResumesPage() {
                 </div>
               )}
             </Panel>
+
+            {selected && (
+              <Panel title="Structured data">
+                <p className="mb-3 text-sm text-ink-500">
+                  Local extraction (free) — review and edit. We only show what we found in the file.
+                  {extraction ? (
+                    <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-600 bg-ink-100">
+                      {extraction.status} · {extraction.extractor}
+                    </span>
+                  ) : null}
+                </p>
+
+                {!extraction && selected.status === "ready" && (
+                  <p className="text-sm text-ink-400">No structured extraction yet — try re-uploading.</p>
+                )}
+                {!extraction && (selected.status === "processing" || selected.status === "uploaded") && (
+                  <p className="text-sm text-ink-400">Waiting for local structure…</p>
+                )}
+
+                {extraction?.error && (
+                  <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+                    {extraction.error}
+                  </p>
+                )}
+
+                {extraction && !hasStructure && extraction.status !== "failed" && (
+                  <p className="mb-3 text-sm text-ink-400">Nothing found in text for contact/skills/sections.</p>
+                )}
+
+                {extraction && (
+                  <div className="space-y-3">
+                    <Field
+                      label="Emails (comma-separated)"
+                      value={(contact.emails || []).join(", ")}
+                      disabled={!canEdit}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          contact: {
+                            ...contact,
+                            emails: e.target.value
+                              .split(",")
+                              .map((s) => s.trim())
+                              .filter(Boolean),
+                          },
+                        })
+                      }
+                    />
+                    <Field
+                      label="Phones (comma-separated)"
+                      value={(contact.phones || []).join(", ")}
+                      disabled={!canEdit}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          contact: {
+                            ...contact,
+                            phones: e.target.value
+                              .split(",")
+                              .map((s) => s.trim())
+                              .filter(Boolean),
+                          },
+                        })
+                      }
+                    />
+                    <Field
+                      label="Skills (comma-separated)"
+                      value={skillsText}
+                      disabled={!canEdit}
+                      onChange={(e) => setSkillsText(e.target.value)}
+                    />
+                    <label className="block text-sm font-medium text-ink-700">
+                      Experience sections (one block; edit raw text)
+                      <textarea
+                        className="admin-input mt-1 min-h-[6rem]"
+                        disabled={!canEdit}
+                        value={(draft.experience_sections || []).join("\n\n---\n\n")}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            experience_sections: e.target.value
+                              .split(/\n\n---\n\n/)
+                              .map((s) => s.trim())
+                              .filter(Boolean),
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="block text-sm font-medium text-ink-700">
+                      Education sections
+                      <textarea
+                        className="admin-input mt-1 min-h-[5rem]"
+                        disabled={!canEdit}
+                        value={(draft.education_sections || []).join("\n\n---\n\n")}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            education_sections: e.target.value
+                              .split(/\n\n---\n\n/)
+                              .map((s) => s.trim())
+                              .filter(Boolean),
+                          })
+                        }
+                      />
+                    </label>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="btn-primary px-4 py-2 text-xs"
+                        disabled={busy}
+                        onClick={() => onSaveReview()}
+                      >
+                        Save review
+                      </button>
+                    )}
+                  </div>
+                )}
+              </Panel>
+            )}
           </div>
         </div>
       )}

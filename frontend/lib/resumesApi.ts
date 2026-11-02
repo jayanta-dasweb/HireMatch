@@ -33,6 +33,37 @@ export type ResumeDocumentDetail = ResumeDocument & {
   versions: ResumeVersion[];
 };
 
+export type ExtractionStatus = "pending" | "ready" | "failed" | "reviewed";
+
+export type StructuredPayload = {
+  extractor?: string;
+  contact?: {
+    emails?: string[];
+    phones?: string[];
+    links?: string[];
+    linkedin?: string[];
+    github?: string[];
+  };
+  skills?: string[];
+  experience_sections?: string[];
+  education_sections?: string[];
+};
+
+export type ResumeExtraction = {
+  id: string;
+  document_id: string;
+  version_id: string;
+  organization_id: string;
+  status: ExtractionStatus;
+  payload: StructuredPayload;
+  reviewed_payload: StructuredPayload | null;
+  effective_payload: StructuredPayload;
+  extractor: string;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 function authHeader(): HeadersInit {
   try {
     const raw = localStorage.getItem(TOKEN_KEY);
@@ -94,6 +125,18 @@ export async function uploadResume(orgId: string, file: File, title?: string): P
     throw new Error(`Upload failed (${response.status})`);
   }
   return data as ResumeDocument;
+}
+
+export function getResumeExtraction(orgId: string, id: string) {
+  return apiFetch<ResumeExtraction>(`/organizations/${orgId}/resumes/${id}/extraction`, {}, true);
+}
+
+export function saveResumeExtractionReview(orgId: string, id: string, reviewed_payload: StructuredPayload) {
+  return apiFetch<ResumeExtraction>(
+    `/organizations/${orgId}/resumes/${id}/extraction`,
+    { method: "PATCH", body: JSON.stringify({ reviewed_payload }) },
+    true,
+  );
 }
 
 export async function downloadResume(orgId: string, id: string, filename: string) {

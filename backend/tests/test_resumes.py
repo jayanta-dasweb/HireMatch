@@ -207,3 +207,55 @@ def test_resume_malware_reject_all(client, unique_email, monkeypatch):
 
     monkeypatch.setenv("RESUME_MALWARE_SCANNER", "noop")
     get_settings.cache_clear()
+
+
+def test_resume_extraction_and_review(client, unique_email):
+    tokens = _register_and_login(client, unique_email, "Extract User")
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+    # Team org → org_admin has resumes.edit (personal workspace is candidate-only)
+    created = client.post(
+        "/api/v1/organizations",
+        headers=headers,
+        json={"name": "Extract Co", "slug": f"extract-co-{unique_email[:8]}"},
+    )
+    assert created.status_code == 201, created.text
+    org_id = created.json()["id"]
+
+    with FIXTURE_DOCX.open("rb") as fh:
+        uploaded = client.post(
+            f"/api/v1/organizations/{org_id}/resumes",
+            headers=headers,
+            files={
+                "file": (
+                    "sample_resume.docx",
+                    fh,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
+        )
+    assert uploaded.status_code == 201, uploaded.text
+    doc_id = uploaded.json()["id"]
+    assert uploaded.json()["status"] == "ready"
+
+    extraction = client.get(
+        f"/api/v1/organizations/{org_id}/resumes/{doc_id}/extraction",
+        headers=headers,
+    )
+    assert extraction.status_code == 200, extraction.text
+    body = extraction.json()
+    assert body["extractor"] == "local_v1"
+    assert body["status"] == "ready"
+    assert "Python" in (body["effective_payload"].get("skills") or [])
+
+    reviewed = {
+        **body["effective_payload"],
+        "skills": ["Python", "CustomSkill"],
+    }
+    saved = client.patch(
+        f"/api/v1/organizations/{org_id}/resumes/{doc_id}/extraction",
+        headers=headers,
+        json={"reviewed_payload": reviewed},
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["status"] == "reviewed"
+    assert "CustomSkill" in saved.json()["effective_payload"]["skills"]

@@ -1,10 +1,17 @@
 # HireMatch AI — Project Progress
 
 **Last updated:** 2026-11-02  
-**Active phase:** Phase 2 Slice B — Celery parse + malware hook  
+**Active phase:** Phase 2 Slice C — Free local structured extract + review  
 **Remote:** https://github.com/jayanta-dasweb/HireMatch.git
 
 ## Completed
+
+### Product Phase 2 — Slice C (Free local structured extract + review)
+- [x] `resume_extractions` table + migration `0008_resume_extractions`
+- [x] Local `local_v1` extractor (regex contact + skill lexicon + section blocks) — no paid LLM
+- [x] Celery runs structure after text extract; GET/PATCH extraction APIs
+- [x] Resumes UI structured panel with edit/save review
+- [x] Honest empty state when nothing found in text
 
 ### Product Phase 2 — Slice B (Celery parse + malware hook)
 - [x] Celery worker (`app.workers`) processes resume versions via Redis
@@ -56,7 +63,7 @@
 ## Test results (after production hardening)
 
 ```text
-19 passed in 16.27s
+22 passed in 17.56s
 ```
 
 Production images built successfully: `hirematch-api:prod`, `hirematch-web:prod`.
@@ -72,7 +79,7 @@ Production images built successfully: `hirematch-api:prod`, `hirematch-web:prod`
 
 ## Next product step (after approval)
 
-**Phase 2 Slice C** — structured extraction + review UI (real model only; still no invented fields). Optional: ClamAV behind the malware hook.
+**Phase 3** — Job Intelligence (JD parse, embeddings, matching), or polish Slice C with a larger skill lexicon / re-upload versions / optional ClamAV.
 
 ## Manual verification checklist
 

@@ -9,8 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.db.session import SessionLocal
-from app.models import ResumeDocument, ResumeStatus, ResumeVersion
-from app.services import malware_scan, resume_parse, resume_storage
+from app.models import ExtractionStatus, ResumeDocument, ResumeStatus, ResumeVersion
+from app.services import malware_scan, resume_parse, resume_storage, resume_structure
+from app.services.resume_extractions import upsert_extraction
 from app.workers.celery_app import celery
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @celery.task(name="resumes.process_version", bind=True, max_retries=2)
 def process_resume_version(self, document_id: str, version_id: str) -> dict:
-    """Malware scan hook then plain-text extract; update document status."""
+    """Malware scan → plain-text extract → local structured extract."""
     doc_uuid = uuid.UUID(document_id)
     ver_uuid = uuid.UUID(version_id)
 
@@ -64,13 +65,38 @@ def process_resume_version(self, document_id: str, version_id: str) -> dict:
             version.extracted_text = text
             version.parse_error = None
             doc.status = ResumeStatus.ready
-            db.commit()
-            return {"ok": True, "status": "ready"}
         except Exception as exc:  # noqa: BLE001 — honest parse failures
             version.extracted_text = None
             version.parse_error = str(exc).replace("\x00", "")[:2000]
             doc.status = ResumeStatus.failed
             db.commit()
             return {"ok": False, "reason": "parse_failed"}
+
+        try:
+            payload = resume_structure.extract_structure(text)
+            upsert_extraction(
+                db,
+                document=doc,
+                version_id=version.id,
+                payload=payload,
+                status=ExtractionStatus.ready,
+                error=None,
+                extractor=resume_structure.EXTRACTOR_ID,
+            )
+        except Exception as exc:  # noqa: BLE001
+            upsert_extraction(
+                db,
+                document=doc,
+                version_id=version.id,
+                payload={"extractor": resume_structure.EXTRACTOR_ID, "contact": {}, "skills": [], "experience_sections": [], "education_sections": []},
+                status=ExtractionStatus.failed,
+                error=str(exc).replace("\x00", "")[:2000],
+                extractor=resume_structure.EXTRACTOR_ID,
+            )
+            # Document remains ready — text extract succeeded
+            logger.exception("Structured extract failed for %s", document_id)
+
+        db.commit()
+        return {"ok": True, "status": "ready"}
     finally:
         db.close()

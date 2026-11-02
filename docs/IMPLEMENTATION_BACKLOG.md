@@ -24,9 +24,11 @@
 - [x] Celery processing jobs (async text extract)
 - [ ] Versioning workflow (re-upload new versions) — later
 
-### Slice C+ (next)
-- [ ] Structured extraction + review UI (real model, not invented fields)
+### Slice C — Free local structured extract + review
+- [x] Local deterministic structure (`local_v1`) + review UI
+- [ ] Optional: larger skill lexicon / spaCy later
 - [ ] Real malware engine (e.g. ClamAV) behind the hook
+- [ ] Cloud/local LLM structured extract (only when keys/hardware available; never invent)
 
 ## Phase 3 — Job Intelligence
 

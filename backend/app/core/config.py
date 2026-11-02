@@ -52,8 +52,9 @@ class Settings(BaseSettings):
         default="HuggingFaceTB/SmolLM2-360M-Instruct",
         alias="RESUME_LLM_MODEL",
     )
-    resume_llm_max_new_tokens: int = Field(default=700, alias="RESUME_LLM_MAX_NEW_TOKENS")
-    resume_llm_max_input_chars: int = Field(default=6000, alias="RESUME_LLM_MAX_INPUT_CHARS")
+    resume_llm_max_new_tokens: int = Field(default=256, alias="RESUME_LLM_MAX_NEW_TOKENS")
+    resume_llm_max_input_chars: int = Field(default=3500, alias="RESUME_LLM_MAX_INPUT_CHARS")
+    resume_llm_timeout_seconds: int = Field(default=90, alias="RESUME_LLM_TIMEOUT_SECONDS")
     hf_home: str = Field(default="/data/hf_cache", alias="HF_HOME")
 
 

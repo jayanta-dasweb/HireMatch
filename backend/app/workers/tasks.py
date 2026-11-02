@@ -17,9 +17,15 @@ from app.workers.celery_app import celery
 logger = logging.getLogger(__name__)
 
 
-@celery.task(name="resumes.process_version", bind=True, max_retries=2)
+@celery.task(
+    name="resumes.process_version",
+    bind=True,
+    max_retries=2,
+    soft_time_limit=240,
+    time_limit=300,
+)
 def process_resume_version(self, document_id: str, version_id: str) -> dict:
-    """Malware scan → plain-text extract → local structured extract."""
+    """Malware scan → text extract → heuristic analysis (commit ready) → optional timed LLM enrich."""
     doc_uuid = uuid.UUID(document_id)
     ver_uuid = uuid.UUID(version_id)
 
@@ -72,12 +78,9 @@ def process_resume_version(self, document_id: str, version_id: str) -> dict:
             db.commit()
             return {"ok": False, "reason": "parse_failed"}
 
+        # 1) Always persist heuristic analysis quickly so UI leaves "processing"
         try:
             payload = resume_analysis.analyze_resume(text)
-            try:
-                payload = resume_llm.enrich_with_local_llm(text, payload)
-            except Exception:  # noqa: BLE001
-                logger.exception("Embedded LLM enrich failed for %s; keeping heuristic analysis", document_id)
             upsert_extraction(
                 db,
                 document=doc,
@@ -85,7 +88,7 @@ def process_resume_version(self, document_id: str, version_id: str) -> dict:
                 payload=payload,
                 status=ExtractionStatus.ready,
                 error=None,
-                extractor=str(payload.get("extractor") or resume_analysis.ANALYZER_ID),
+                extractor=resume_analysis.ANALYZER_ID,
             )
         except Exception as exc:  # noqa: BLE001
             upsert_extraction(
@@ -106,10 +109,41 @@ def process_resume_version(self, document_id: str, version_id: str) -> dict:
                 error=str(exc).replace("\x00", "")[:2000],
                 extractor=resume_analysis.ANALYZER_ID,
             )
-            # Document remains ready — text extract succeeded
             logger.exception("Resume analysis failed for %s", document_id)
+            db.commit()
+            return {"ok": True, "status": doc.status.value, "llm": False}
 
         db.commit()
-        return {"ok": True, "status": "ready"}
+
+        # 2) Optional embedded LLM enrich (timed). Never block "ready" status.
+        try:
+            enriched = resume_llm.enrich_with_local_llm(text, payload)
+            if enriched.get("llm", {}).get("used"):
+                db2 = SessionLocal()
+                try:
+                    doc2 = db2.get(ResumeDocument, doc_uuid)
+                    if doc2:
+                        upsert_extraction(
+                            db2,
+                            document=doc2,
+                            version_id=ver_uuid,
+                            payload=enriched,
+                            status=ExtractionStatus.ready,
+                            error=None,
+                            extractor=str(enriched.get("extractor") or resume_analysis.ANALYZER_ID),
+                        )
+                        db2.commit()
+                finally:
+                    db2.close()
+                return {"ok": True, "status": "ready", "llm": True}
+            logger.info(
+                "LLM enrich skipped for %s: %s",
+                document_id,
+                (enriched.get("llm") or {}).get("detail"),
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("Embedded LLM enrich failed for %s; heuristic kept", document_id)
+
+        return {"ok": True, "status": "ready", "llm": False}
     finally:
         db.close()

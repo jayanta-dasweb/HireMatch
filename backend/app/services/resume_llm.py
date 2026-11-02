@@ -50,7 +50,20 @@ def enrich_with_local_llm(text: str, baseline: dict[str, Any]) -> dict[str, Any]
         }
 
     try:
-        generated = _generate_json(raw[: settings.resume_llm_max_input_chars])
+        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import TimeoutError as FuturesTimeout
+
+        timeout = max(15, int(settings.resume_llm_timeout_seconds))
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            fut = pool.submit(_generate_json, raw[: settings.resume_llm_max_input_chars])
+            try:
+                generated = fut.result(timeout=timeout)
+            except FuturesTimeout:
+                logger.warning("Embedded LLM timed out after %ss", timeout)
+                return {
+                    **baseline,
+                    "llm": {"enabled": True, "used": False, "detail": f"timeout_{timeout}s"},
+                }
     except Exception as exc:  # noqa: BLE001
         logger.exception("Embedded LLM failed")
         return {
@@ -135,9 +148,10 @@ def _generate_json(text: str) -> dict[str, Any] | None:
         "JSON:"
     )
 
+    # Keep generation small — CPU inference is slow; prefer finishing over long essays
     out = pipe(
         prompt,
-        max_new_tokens=settings.resume_llm_max_new_tokens,
+        max_new_tokens=min(256, int(settings.resume_llm_max_new_tokens)),
         do_sample=False,
         return_full_text=False,
         pad_token_id=getattr(pipe.tokenizer, "eos_token_id", None),

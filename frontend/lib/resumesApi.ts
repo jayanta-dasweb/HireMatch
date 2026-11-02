@@ -84,6 +84,7 @@ export type StructuredPayload = {
   };
   findings?: { severity: string; code: string; message: string }[];
   section_coverage?: Record<string, boolean>;
+  llm?: { enabled?: boolean; used?: boolean; model?: string; detail?: string };
 };
 
 export type ResumeExtraction = {

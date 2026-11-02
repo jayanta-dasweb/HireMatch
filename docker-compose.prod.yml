@@ -73,7 +73,7 @@ services:
       context: ./backend
       target: production
     restart: unless-stopped
-    command: ["celery", "-A", "app.workers.celery_app.celery", "worker", "-l", "info"]
+    command: ["celery", "-A", "app.workers.celery_app.celery", "worker", "-l", "info", "--concurrency=1"]
     env_file:
       - .env.production
     environment:
@@ -83,8 +83,12 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       RESUME_STORAGE_PATH: ${RESUME_STORAGE_PATH:-/data/resumes}
       RESUME_MALWARE_SCANNER: ${RESUME_MALWARE_SCANNER:-noop}
+      RESUME_LLM_ENABLED: ${RESUME_LLM_ENABLED:-true}
+      RESUME_LLM_MODEL: ${RESUME_LLM_MODEL:-HuggingFaceTB/SmolLM2-360M-Instruct}
+      HF_HOME: ${HF_HOME:-/data/hf_cache}
     volumes:
       - resume_data_prod:/data/resumes
+      - hf_cache_prod:/data/hf_cache
     depends_on:
       db:
         condition: service_healthy
@@ -143,3 +147,4 @@ volumes:
   postgres_data_prod:
   redis_data_prod:
   resume_data_prod:
+  hf_cache_prod:

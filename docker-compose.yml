@@ -74,7 +74,8 @@ services:
     build:
       context: ./backend
       target: development
-    command: ["celery", "-A", "app.workers.celery_app.celery", "worker", "-l", "info"]
+    # concurrency=1 avoids OOM while running the embedded CPU model
+    command: ["celery", "-A", "app.workers.celery_app.celery", "worker", "-l", "info", "--concurrency=1"]
     env_file:
       - .env
     environment:
@@ -85,9 +86,13 @@ services:
       REDIS_URL: redis://redis:6379/0
       RESUME_STORAGE_PATH: ${RESUME_STORAGE_PATH:-/data/resumes}
       RESUME_MALWARE_SCANNER: ${RESUME_MALWARE_SCANNER:-noop}
+      RESUME_LLM_ENABLED: ${RESUME_LLM_ENABLED:-true}
+      RESUME_LLM_MODEL: ${RESUME_LLM_MODEL:-HuggingFaceTB/SmolLM2-360M-Instruct}
+      HF_HOME: ${HF_HOME:-/data/hf_cache}
     volumes:
       - ./backend:/app
       - resume_data:/data/resumes
+      - hf_cache:/data/hf_cache
     depends_on:
       db:
         condition: service_healthy
@@ -115,3 +120,4 @@ services:
 volumes:
   postgres_data:
   resume_data:
+  hf_cache:

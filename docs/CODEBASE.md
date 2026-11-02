@@ -45,6 +45,7 @@ Brand colors: teal `brand-*` + slate `ink-*` on `surface-muted`.
 | Resumes (upload/parse) | `services/resumes.py` + `resume_storage.py` + `resume_parse.py` + `malware_scan.py` + `resume_structure.py` + `resume_analysis.py` + `resume_extractions.py` + `api/v1/resumes.py` + `workers/tasks.py` + `frontend/lib/resumesApi.ts` + `app/dashboard/resumes` |
 | Skill lexicon | `backend/app/data/skill_lexicon.txt` |
 | In-house analysis | `services/resume_analysis.py` (`hirematch_local_v2`) — no cloud AI |
+| Embedded LLM | `services/resume_llm.py` + `HF_HOME` volume; model runs in Celery worker |
 | Background jobs | `workers/celery_app.py` + Compose `worker` service |
 | Env settings | `core/config.py` + `.env.example` |
 | UI page | `frontend/app/.../page.tsx` |

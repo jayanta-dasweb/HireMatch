@@ -26,6 +26,8 @@ os.environ["RESUME_STORAGE_PATH"] = str(
     __import__("pathlib").Path(__file__).resolve().parent / "_resume_storage"
 )
 os.environ.setdefault("RESUME_MALWARE_SCANNER", "noop")
+# Tests mock / skip model download
+os.environ["RESUME_LLM_ENABLED"] = "false"
 os.environ["CELERY_TASK_ALWAYS_EAGER"] = "true"
 
 from app.core.config import get_settings  # noqa: E402

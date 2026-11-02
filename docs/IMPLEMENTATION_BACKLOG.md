@@ -26,8 +26,9 @@
 
 ### Slice C — Free local structured extract + review
 - [x] Local deterministic structure + in-house deep analysis (`hirematch_local_v2`) + review UI
-- [ ] Optional: embed open-weight model inside Docker later (still no external API)
+- [x] Embedded open-weight model in worker (CPU; still no external inference API)
 - [ ] Real malware engine (e.g. ClamAV) behind the hook
+- [ ] Larger embedded model / GPU worker profile
 
 ## Phase 3 — Job Intelligence
 

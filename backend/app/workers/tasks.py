@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from app.db.session import SessionLocal
 from app.models import ExtractionStatus, ResumeDocument, ResumeStatus, ResumeVersion
-from app.services import malware_scan, resume_analysis, resume_parse, resume_storage
+from app.services import malware_scan, resume_analysis, resume_llm, resume_parse, resume_storage
 from app.services.resume_extractions import upsert_extraction
 from app.workers.celery_app import celery
 
@@ -74,6 +74,10 @@ def process_resume_version(self, document_id: str, version_id: str) -> dict:
 
         try:
             payload = resume_analysis.analyze_resume(text)
+            try:
+                payload = resume_llm.enrich_with_local_llm(text, payload)
+            except Exception:  # noqa: BLE001
+                logger.exception("Embedded LLM enrich failed for %s; keeping heuristic analysis", document_id)
             upsert_extraction(
                 db,
                 document=doc,
@@ -81,7 +85,7 @@ def process_resume_version(self, document_id: str, version_id: str) -> dict:
                 payload=payload,
                 status=ExtractionStatus.ready,
                 error=None,
-                extractor=resume_analysis.ANALYZER_ID,
+                extractor=str(payload.get("extractor") or resume_analysis.ANALYZER_ID),
             )
         except Exception as exc:  # noqa: BLE001
             upsert_extraction(

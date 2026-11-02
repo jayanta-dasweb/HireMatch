@@ -46,6 +46,15 @@ class Settings(BaseSettings):
     resume_storage_path: str = Field(default="/data/resumes", alias="RESUME_STORAGE_PATH")
     resume_max_bytes: int = Field(default=10 * 1024 * 1024, alias="RESUME_MAX_BYTES")
     resume_malware_scanner: str = Field(default="noop", alias="RESUME_MALWARE_SCANNER")
+    # Embedded open-weight model (downloaded once into HF cache; no cloud inference API)
+    resume_llm_enabled: bool = Field(default=True, alias="RESUME_LLM_ENABLED")
+    resume_llm_model: str = Field(
+        default="HuggingFaceTB/SmolLM2-360M-Instruct",
+        alias="RESUME_LLM_MODEL",
+    )
+    resume_llm_max_new_tokens: int = Field(default=700, alias="RESUME_LLM_MAX_NEW_TOKENS")
+    resume_llm_max_input_chars: int = Field(default=6000, alias="RESUME_LLM_MAX_INPUT_CHARS")
+    hf_home: str = Field(default="/data/hf_cache", alias="HF_HOME")
 
 
     @field_validator("secret_key")

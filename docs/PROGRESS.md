@@ -9,6 +9,7 @@
 ### Product Phase 2 — Slice C (Free local structured extract + review)
 - [x] `resume_extractions` table + migration `0008_resume_extractions`
 - [x] In-house `hirematch_local_v2` analysis engine (no external AI APIs): contact, skills+evidence, roles, education, ATS score, findings
+- [x] Embedded open model (`SmolLM2-360M-Instruct` via transformers/CPU) inside worker; evidence-validated merge; HF cache volume
 - [x] Celery runs analysis after text extract; GET/PATCH extraction APIs
 - [x] Resumes UI analysis scorecard + roles/findings + edit/save review
 - [x] Honest empty state when nothing found in text
@@ -63,7 +64,7 @@
 ## Test results (after production hardening)
 
 ```text
-24 passed in 17.67s
+26 passed in 17.76s
 ```
 
 Production images built successfully: `hirematch-api:prod`, `hirematch-web:prod`.

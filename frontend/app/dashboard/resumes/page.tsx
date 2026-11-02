@@ -412,14 +412,20 @@ export default function ResumesPage() {
             {selected && (
               <Panel title="In-house analysis">
                 <p className="mb-3 text-sm text-ink-500">
-                  HireMatch local engine (free, no external AI APIs) — evidence from your file only. Review and edit
-                  below.
+                  HireMatch in-house analysis (rules + optional embedded open model). No cloud AI APIs — evidence from
+                  your file only. Review and edit below.
                   {extraction ? (
                     <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-600 bg-ink-100">
                       {extraction.status} · {extraction.extractor}
+                      {draft.llm?.used ? " · llm" : ""}
                     </span>
                   ) : null}
                 </p>
+                {extraction && draft.llm?.enabled && draft.llm?.used === false && draft.llm?.detail && (
+                  <p className="mb-3 rounded-xl border border-ink-100 bg-surface-muted px-3 py-2 text-xs text-ink-600">
+                    Embedded model skipped: {draft.llm.detail}
+                  </p>
+                )}
 
                 {!extraction && selected.status === "ready" && (
                   <p className="text-sm text-ink-400">No analysis yet — re-upload to run the local engine.</p>

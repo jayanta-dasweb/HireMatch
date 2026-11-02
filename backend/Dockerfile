@@ -22,8 +22,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --prefix=/install -r requirements.txt
+COPY requirements.txt requirements-torch-cpu.txt ./
+RUN pip install --prefix=/install -r requirements.txt \
+    && pip install --prefix=/install -r requirements-torch-cpu.txt
 
 
 FROM base AS development

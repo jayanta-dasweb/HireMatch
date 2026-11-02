@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     seed_demo_user: bool = Field(default=False, alias="SEED_DEMO_USER")
     seed_platform_admin: bool = Field(default=True, alias="SEED_PLATFORM_ADMIN")
 
+    resume_storage_path: str = Field(default="/data/resumes", alias="RESUME_STORAGE_PATH")
+    resume_max_bytes: int = Field(default=10 * 1024 * 1024, alias="RESUME_MAX_BYTES")
+
+
     @field_validator("secret_key")
     @classmethod
     def secret_must_be_long(cls, value: str) -> str:

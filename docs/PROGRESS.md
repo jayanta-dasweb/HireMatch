@@ -1,10 +1,18 @@
 # HireMatch AI — Project Progress
 
-**Last updated:** 2026-10-31  
-**Active phase:** Phase 1 foundation + production ops baseline  
+**Last updated:** 2026-11-02  
+**Active phase:** Phase 2 Slice A — Resume upload & text extract  
 **Remote:** https://github.com/jayanta-dasweb/HireMatch.git
 
 ## Completed
+
+### Product Phase 2 — Slice A (Resume upload & text extract)
+- [x] `resume_documents` + `resume_versions` (org-scoped), migration `0007_resumes`
+- [x] Private local storage (`RESUME_STORAGE_PATH`, Docker volume `resume_data`)
+- [x] Sync PDF/DOCX text extract via `pypdf` / `python-docx` (no fake AI fields)
+- [x] Org API gated by `resumes.view|create|edit|delete` + download stream
+- [x] Dashboard Resumes page: upload / list / detail / soft-delete; Sidebar “soon” removed
+- [x] Isolation + permission tests
 
 ### Product Phase 1
 - [x] Planning docs (PRD, architecture, API, DB, security, AI eval, deploy, cost, backlog)
@@ -41,7 +49,7 @@
 ## Test results (after production hardening)
 
 ```text
-10 passed in 4.23s
+18 passed in 14.99s
 ```
 
 Production images built successfully: `hirematch-api:prod`, `hirematch-web:prod`.
@@ -57,7 +65,7 @@ Production images built successfully: `hirematch-api:prod`, `hirematch-web:prod`
 
 ## Next product step (after approval)
 
-**Phase 2 — Resume Intelligence**
+**Phase 2 Slice B** — async parse workers (Celery), malware scan hook; still no invented structured AI until a later slice.
 
 ## Manual verification checklist
 

@@ -52,10 +52,12 @@ services:
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       SEED_PLATFORM_ADMIN: ${SEED_PLATFORM_ADMIN:-true}
       SEED_DEMO_USER: ${SEED_DEMO_USER:-false}
+      RESUME_STORAGE_PATH: ${RESUME_STORAGE_PATH:-/data/resumes}
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - resume_data:/data/resumes
     depends_on:
       db:
         condition: service_healthy
@@ -85,3 +87,4 @@ services:
 
 volumes:
   postgres_data:
+  resume_data:

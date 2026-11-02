@@ -22,3 +22,10 @@ class SubscriptionStatus(str, enum.Enum):
     past_due = "past_due"
     canceled = "canceled"
     none = "none"
+
+
+class ResumeStatus(str, enum.Enum):
+    uploaded = "uploaded"
+    processing = "processing"
+    ready = "ready"
+    failed = "failed"

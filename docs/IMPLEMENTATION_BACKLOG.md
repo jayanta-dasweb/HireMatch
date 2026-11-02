@@ -1,21 +1,28 @@
 # HireMatch AI — Phased Implementation Backlog
 
-## Phase 1 — Product Foundation (CURRENT)
+## Phase 1 — Product Foundation
 
 - [x] Docs: PRD, architecture, API, DB, security, AI eval, deploy, cost
-- [ ] Docker Compose + env validation
-- [ ] Auth (register/login/refresh/logout)
-- [ ] Email verify + password reset **interfaces** (delivery when SMTP set)
-- [ ] Organizations + memberships + RBAC
-- [ ] Tenant-aware access + isolation tests
-- [ ] Frontend: landing, sign-in, register, protected dashboard
-- [ ] Health check, OpenAPI, README, PROGRESS.md
+- [x] Docker Compose + env validation
+- [x] Auth (register/login/refresh/logout)
+- [x] Email verify + password reset **interfaces** (delivery when SMTP set)
+- [x] Organizations + memberships + RBAC
+- [x] Tenant-aware access + isolation tests
+- [x] Frontend: landing, sign-in, register, protected dashboard
+- [x] Health check, OpenAPI, README, PROGRESS.md
 
-## Phase 2 — Resume Intelligence
+## Phase 2 — Resume Intelligence (CURRENT)
 
-- Upload validation, private storage, malware scan hook
-- PDF/DOCX parse, structured extraction, review UI
-- Versioning + processing jobs (Celery)
+### Slice A — Upload & plain-text extract
+- [x] Upload validation (PDF/DOCX, size), private storage volume
+- [x] Document + version tables, org-scoped API (`resumes.*`)
+- [x] Sync PDF/DOCX text extract (`pypdf` / `python-docx`) — no fake AI
+- [x] Resumes UI (list / upload / detail / soft-delete)
+
+### Slice B+ (next)
+- [ ] Malware scan hook
+- [ ] Versioning workflow + Celery processing jobs
+- [ ] Structured extraction + review UI (real model, not invented fields)
 
 ## Phase 3 — Job Intelligence
 

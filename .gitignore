@@ -28,6 +28,7 @@ env/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+backend/tests/_resume_storage/
 .coverage
 htmlcov/
 dist/

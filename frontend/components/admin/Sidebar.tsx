@@ -25,7 +25,7 @@ type NavItem = {
 
 const links: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: IconHome },
-  { href: "/dashboard/resumes", label: "Resumes", icon: IconFile, soon: true, permission: "resumes.view" },
+  { href: "/dashboard/resumes", label: "Resumes", icon: IconFile, permission: "resumes.view" },
   { href: "/dashboard/jobs", label: "Jobs", icon: IconBriefcase, soon: true, permission: "jobs.view" },
   { href: "/dashboard/team", label: "Team", icon: IconUsers, permission: "org.members.view" },
   { href: "/dashboard/admin", label: "System console", icon: IconShield, adminOnly: true },

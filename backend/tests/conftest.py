@@ -18,9 +18,13 @@ os.environ.setdefault("EMAIL_BACKEND", "console")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
 os.environ.setdefault("FRONTEND_URL", "http://localhost:3000")
 os.environ.setdefault("APP_ENV", "test")
-os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+# Force off inside Compose (setdefault would keep container RATE_LIMIT_ENABLED=true)
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 os.environ.setdefault("TRUSTED_HOSTS", "*")
 os.environ.setdefault("DEBUG", "true")
+os.environ["RESUME_STORAGE_PATH"] = str(
+    __import__("pathlib").Path(__file__).resolve().parent / "_resume_storage"
+)
 
 from app.core.config import get_settings  # noqa: E402
 from app.db.base import Base  # noqa: E402

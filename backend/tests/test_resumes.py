@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from app.core.config import get_settings
+
 FIXTURE_DOCX = Path(__file__).resolve().parent / "fixtures" / "sample_resume.docx"
 
 
@@ -175,3 +177,33 @@ def test_resume_create_permission_denied(client, unique_email):
             },
         )
     assert denied.status_code == 403, denied.text
+
+
+def test_resume_malware_reject_all(client, unique_email, monkeypatch):
+    monkeypatch.setenv("RESUME_MALWARE_SCANNER", "reject_all")
+    get_settings.cache_clear()
+    # Celery app already imported — scanner reads settings per call
+    tokens = _register_and_login(client, unique_email, "Scan User")
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+    org_id = _org_id(client, tokens["access_token"])
+
+    with FIXTURE_DOCX.open("rb") as fh:
+        uploaded = client.post(
+            f"/api/v1/organizations/{org_id}/resumes",
+            headers=headers,
+            files={
+                "file": (
+                    "sample_resume.docx",
+                    fh,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
+        )
+    assert uploaded.status_code == 201, uploaded.text
+    body = uploaded.json()
+    assert body["status"] == "failed"
+    assert body["latest_version"] is not None
+    assert "malware" in (body["latest_version"]["parse_error"] or "").lower()
+
+    monkeypatch.setenv("RESUME_MALWARE_SCANNER", "noop")
+    get_settings.cache_clear()

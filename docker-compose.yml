@@ -53,6 +53,7 @@ services:
       SEED_PLATFORM_ADMIN: ${SEED_PLATFORM_ADMIN:-true}
       SEED_DEMO_USER: ${SEED_DEMO_USER:-false}
       RESUME_STORAGE_PATH: ${RESUME_STORAGE_PATH:-/data/resumes}
+      RESUME_MALWARE_SCANNER: ${RESUME_MALWARE_SCANNER:-noop}
     ports:
       - "8000:8000"
     volumes:
@@ -68,6 +69,32 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  worker:
+    build:
+      context: ./backend
+      target: development
+    command: ["celery", "-A", "app.workers.celery_app.celery", "worker", "-l", "info"]
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hirematch}:${POSTGRES_PASSWORD:-hirematch}@db:5432/${POSTGRES_DB:-hirematch}
+      REDIS_URL: redis://redis:6379/0
+      RESUME_STORAGE_PATH: ${RESUME_STORAGE_PATH:-/data/resumes}
+      RESUME_MALWARE_SCANNER: ${RESUME_MALWARE_SCANNER:-noop}
+    volumes:
+      - ./backend:/app
+      - resume_data:/data/resumes
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
 
   web:
     build:

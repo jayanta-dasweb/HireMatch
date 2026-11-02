@@ -77,15 +77,21 @@ export async function uploadResume(orgId: string, file: File, title?: string): P
   body.append("file", file);
   if (title?.trim()) body.append("title", title.trim());
 
-  const response = await fetch(`${API_URL}/organizations/${orgId}/resumes`, {
-    method: "POST",
-    headers: authHeader(),
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/organizations/${orgId}/resumes`, {
+      method: "POST",
+      headers: authHeader(),
+      body,
+    });
+  } catch {
+    throw new Error("Could not reach the API. Is the backend running?");
+  }
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const detail = (data as { detail?: string })?.detail;
-    throw new Error(typeof detail === "string" ? detail : "Upload failed");
+    const detail = (data as { detail?: string | { msg?: string }[] })?.detail;
+    if (typeof detail === "string") throw new Error(detail);
+    throw new Error(`Upload failed (${response.status})`);
   }
   return data as ResumeDocument;
 }

@@ -45,6 +45,7 @@ class Settings(BaseSettings):
 
     resume_storage_path: str = Field(default="/data/resumes", alias="RESUME_STORAGE_PATH")
     resume_max_bytes: int = Field(default=10 * 1024 * 1024, alias="RESUME_MAX_BYTES")
+    resume_malware_scanner: str = Field(default="noop", alias="RESUME_MALWARE_SCANNER")
 
 
     @field_validator("secret_key")

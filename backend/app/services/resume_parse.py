@@ -3,6 +3,14 @@
 from __future__ import annotations
 
 import io
+import re
+
+
+def _clean_text(text: str) -> str:
+    # pypdf can emit NUL / control chars that PostgreSQL rejects in text columns
+    cleaned = text.replace("\x00", "")
+    cleaned = re.sub(r"[\x01-\x08\x0b\x0c\x0e-\x1f]", "", cleaned)
+    return cleaned.strip()
 
 
 def extract_text(*, data: bytes, content_type: str, filename: str) -> str:
@@ -28,7 +36,7 @@ def _extract_pdf(data: bytes) -> str:
         text = page.extract_text() or ""
         if text.strip():
             parts.append(text.strip())
-    text = "\n\n".join(parts).strip()
+    text = _clean_text("\n\n".join(parts))
     if not text:
         raise ValueError("No extractable text found in PDF (may be scanned/image-only)")
     return text
@@ -39,7 +47,7 @@ def _extract_docx(data: bytes) -> str:
 
     doc = Document(io.BytesIO(data))
     parts = [p.text.strip() for p in doc.paragraphs if p.text and p.text.strip()]
-    text = "\n".join(parts).strip()
+    text = _clean_text("\n".join(parts))
     if not text:
         raise ValueError("No extractable text found in DOCX")
     return text

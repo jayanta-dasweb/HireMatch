@@ -1,15 +1,22 @@
 # HireMatch AI — Project Progress
 
 **Last updated:** 2026-11-02  
-**Active phase:** Phase 2 Slice A — Resume upload & text extract  
+**Active phase:** Phase 2 Slice B — Celery parse + malware hook  
 **Remote:** https://github.com/jayanta-dasweb/HireMatch.git
 
 ## Completed
 
+### Product Phase 2 — Slice B (Celery parse + malware hook)
+- [x] Celery worker (`app.workers`) processes resume versions via Redis
+- [x] Upload returns `processing`; worker runs malware hook then text extract
+- [x] Pluggable `RESUME_MALWARE_SCANNER` (`noop` default, `reject_all` for tests)
+- [x] Resumes UI polls while status is `processing`
+- [x] Compose `worker` service (dev + prod)
+
 ### Product Phase 2 — Slice A (Resume upload & text extract)
 - [x] `resume_documents` + `resume_versions` (org-scoped), migration `0007_resumes`
 - [x] Private local storage (`RESUME_STORAGE_PATH`, Docker volume `resume_data`)
-- [x] Sync PDF/DOCX text extract via `pypdf` / `python-docx` (no fake AI fields)
+- [x] PDF/DOCX text extract via `pypdf` / `python-docx` (no fake AI fields)
 - [x] Org API gated by `resumes.view|create|edit|delete` + download stream
 - [x] Dashboard Resumes page: upload / list / detail / soft-delete; Sidebar “soon” removed
 - [x] Isolation + permission tests
@@ -49,7 +56,7 @@
 ## Test results (after production hardening)
 
 ```text
-18 passed in 14.99s
+19 passed in 16.27s
 ```
 
 Production images built successfully: `hirematch-api:prod`, `hirematch-web:prod`.
@@ -65,7 +72,7 @@ Production images built successfully: `hirematch-api:prod`, `hirematch-web:prod`
 
 ## Next product step (after approval)
 
-**Phase 2 Slice B** — async parse workers (Celery), malware scan hook; still no invented structured AI until a later slice.
+**Phase 2 Slice C** — structured extraction + review UI (real model only; still no invented fields). Optional: ClamAV behind the malware hook.
 
 ## Manual verification checklist
 

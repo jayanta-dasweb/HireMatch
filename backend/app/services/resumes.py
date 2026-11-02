@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.config import get_settings
 from app.core.errors import bad_request, not_found
 from app.models import ResumeDocument, ResumeStatus, ResumeVersion, User
-from app.services import resume_parse, resume_storage
+from app.services import resume_storage
 from app.services.audit import record_audit
 from app.services.rbac import require_permission
 
@@ -165,25 +165,17 @@ def create_resume(
     )
     byte_size, sha256 = resume_storage.save_bytes(storage_key=storage_key, data=data)
 
-    extracted: str | None = None
-    parse_error: str | None = None
-    try:
-        extracted = resume_parse.extract_text(data=data, content_type=ctype, filename=name)
-        doc.status = ResumeStatus.ready
-    except Exception as exc:  # noqa: BLE001 — surface honest parse failures
-        parse_error = str(exc)[:2000]
-        doc.status = ResumeStatus.failed
-
     version = ResumeVersion(
         document_id=doc.id,
         version_number=version_number,
         storage_key=storage_key,
         byte_size=byte_size,
         sha256=sha256,
-        extracted_text=extracted,
-        parse_error=parse_error,
+        extracted_text=None,
+        parse_error=None,
     )
     db.add(version)
+    db.flush()
     record_audit(
         db,
         action="resume.uploaded",
@@ -193,7 +185,18 @@ def create_resume(
         resource_id=str(doc.id),
         metadata={"filename": name, "status": doc.status.value, "byte_size": byte_size},
     )
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    # Parse off-request via Celery (eager in tests)
+    from app.workers.tasks import process_resume_version
+
+    process_resume_version.delay(str(doc.id), str(version.id))
+    # Eager tasks update in another session; drop identity-map cache before re-read
+    db.expire_all()
     return _get_active_document(db, organization_id=organization_id, document_id=doc.id)
 
 

@@ -59,16 +59,50 @@ export default function ResumesPage() {
     reload().catch((err) => alert.error(friendlyErrorMessage(err, "Failed to load resumes")));
   }, [user, orgId, canView]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Poll while Celery is still extracting text
+  useEffect(() => {
+    if (!orgId || !canView) return;
+    const processing = items.some((r) => r.status === "processing" || r.status === "uploaded");
+    const selectedProcessing =
+      selected && (selected.status === "processing" || selected.status === "uploaded");
+    if (!processing && !selectedProcessing) return;
+
+    let ticks = 0;
+    const maxTicks = 30; // ~60s at 2s
+    const id = window.setInterval(() => {
+      ticks += 1;
+      if (ticks > maxTicks) {
+        window.clearInterval(id);
+        return;
+      }
+      reload()
+        .then(async () => {
+          if (selected?.id) {
+            const detail = await getResume(orgId, selected.id);
+            setSelected(detail);
+            setEditTitle(detail.title);
+          }
+        })
+        .catch(() => undefined);
+    }, 2000);
+    return () => window.clearInterval(id);
+  }, [items, selected?.id, selected?.status, orgId, canView]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function onUpload(e: FormEvent) {
     e.preventDefault();
     if (!orgId || !file) return;
     setBusy(true);
     try {
-      await uploadResume(orgId, file, title || undefined);
+      const doc = await uploadResume(orgId, file, title || undefined);
       setFile(null);
       setTitle("");
-      alert.success("Resume uploaded and text extracted when possible.", "Uploaded");
+      alert.success("Resume uploaded. Text extraction runs in the background.", "Uploaded");
       await reload();
+      if (doc?.id) {
+        const detail = await getResume(orgId, doc.id);
+        setSelected(detail);
+        setEditTitle(detail.title);
+      }
     } catch (err) {
       alert.error(friendlyErrorMessage(err, "Upload failed"));
     } finally {
@@ -257,6 +291,12 @@ export default function ResumesPage() {
                     </div>
                   )}
 
+                  {(selected.status === "processing" || selected.status === "uploaded") && (
+                    <p className="rounded-xl border border-ink-100 bg-surface-muted px-3 py-2 text-sm text-ink-600">
+                      Processing — scanning and extracting plain text. This page refreshes automatically.
+                    </p>
+                  )}
+
                   {selected.latest_version?.parse_error && (
                     <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
                       Parse issue: {selected.latest_version.parse_error}
@@ -270,7 +310,9 @@ export default function ResumesPage() {
                     <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap rounded-xl border border-ink-100 bg-surface-muted p-3 text-xs text-ink-800">
                       {selected.latest_version?.extracted_text ||
                         selected.versions?.[selected.versions.length - 1]?.extracted_text ||
-                        "(No text extracted)"}
+                        (selected.status === "processing" || selected.status === "uploaded"
+                          ? "(Waiting for extraction…)"
+                          : "(No text extracted)")}
                     </pre>
                   </div>
                 </div>

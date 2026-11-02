@@ -55,7 +55,7 @@ def system_health(db: Session) -> dict:
         "organization_count": db.scalar(select(func.count()).select_from(Organization)) or 0,
         "user_count": db.scalar(select(func.count()).select_from(User)) or 0,
         "active_user_count": db.scalar(select(func.count()).select_from(User).where(User.is_active.is_(True))) or 0,
-        "background_workers": "not_configured_until_phase_2",
+        "background_workers": "celery_resume_worker",
     }
 
 

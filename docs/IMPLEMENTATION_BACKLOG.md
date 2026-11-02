@@ -19,10 +19,14 @@
 - [x] Sync PDF/DOCX text extract (`pypdf` / `python-docx`) — no fake AI
 - [x] Resumes UI (list / upload / detail / soft-delete)
 
-### Slice B+ (next)
-- [ ] Malware scan hook
-- [ ] Versioning workflow + Celery processing jobs
+### Slice B — Celery + malware hook
+- [x] Malware scan hook (`noop` / `reject_all`)
+- [x] Celery processing jobs (async text extract)
+- [ ] Versioning workflow (re-upload new versions) — later
+
+### Slice C+ (next)
 - [ ] Structured extraction + review UI (real model, not invented fields)
+- [ ] Real malware engine (e.g. ClamAV) behind the hook
 
 ## Phase 3 — Job Intelligence
 
